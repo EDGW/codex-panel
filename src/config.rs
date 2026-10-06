@@ -420,35 +420,302 @@ pub fn load_with_registry(paths: &ConfigPaths, registry: &Registry) -> Result<Lo
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
+    use crate::dest::{
+        Credentials, Destination, DestinationConfig, PricingInterface, SessionContext,
+        SessionPricing, Stats, registry::CreateContext,
+    };
     use std::os::unix::fs::symlink;
 
-    #[test]
-    fn shipped_catalog_routes_are_valid_and_only_deepseek_has_a_note() {
-        let paths = ConfigPaths {
-            defaults: PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("destinations.toml"),
-            user: None,
-        };
-        let registry = crate::dest::builtins::registry().unwrap();
-        let loaded = load_with_registry(&paths, &registry).unwrap();
-        let metadata: serde_json::Value =
-            serde_json::from_str(include_str!("../apikey-names.json")).unwrap();
-        for (url, instance) in metadata["mappings"].as_object().unwrap() {
-            let routed = loaded.mappings.destination_id(url).unwrap();
-            assert_eq!(routed, instance.as_str().unwrap());
-            assert_eq!(loaded.instance(routed).kind, "models_dev");
+    struct Fixture {
+        root: PathBuf,
+        paths: ConfigPaths,
+        registry: Registry,
+    }
+
+    impl Fixture {
+        fn new(label: &str, defaults: &str) -> Self {
+            let root =
+                std::env::temp_dir().join(format!("panel-config-{label}-{}", std::process::id()));
+            std::fs::create_dir_all(&root).unwrap();
+            let paths = ConfigPaths {
+                defaults: root.join("defaults.toml"),
+                user: Some(root.join("user.toml")),
+            };
+            std::fs::write(&paths.defaults, defaults).unwrap();
+            let mut registry = Registry::new();
+            for (kind, field) in [("fixture-a", "endpoint"), ("fixture-b", "selector")] {
+                registry
+                    .register(kind, move |value, complete| {
+                        let table = value.as_table().ok_or("config: expected table")?;
+                        for key in table.keys() {
+                            if key != field {
+                                return Err(format!("config.{key}: unknown field"));
+                            }
+                        }
+                        match table.get(field) {
+                            Some(value) => {
+                                let text = value
+                                    .as_str()
+                                    .filter(|value| !value.is_empty())
+                                    .ok_or_else(|| {
+                                        format!("config.{field}: expected nonempty string")
+                                    })?;
+                                Ok(complete.then(|| {
+                                    Arc::new(FixtureFactory(text.into()))
+                                        as Arc<dyn DestinationFactory>
+                                }))
+                            }
+                            None if complete => {
+                                Err(format!("config.{field}: missing required field"))
+                            }
+                            None => Ok(None),
+                        }
+                    })
+                    .unwrap();
+            }
+            Self {
+                root,
+                paths,
+                registry,
+            }
         }
+
+        fn load(&self, user: &str) -> Result<LoadedConfig> {
+            std::fs::write(self.paths.user.as_ref().unwrap(), user).unwrap();
+            load_with_registry(&self.paths, &self.registry)
+        }
+
+        fn error(&self, user: &str, origin: &Path, instance: &str, field: &str) -> String {
+            let error = self
+                .load(user)
+                .err()
+                .expect("invalid configuration must fail before startup");
+            assert!(
+                error.contains(&format!(
+                    "{}: instance '{instance}': {field}:",
+                    origin.display()
+                )),
+                "{error}"
+            );
+            error
+        }
+    }
+
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    struct FixtureFactory(String);
+    impl DestinationFactory for FixtureFactory {
+        fn create(&self, context: CreateContext) -> Result<Arc<dyn Destination>> {
+            Ok(Arc::new(FixtureDestination(format!(
+                "{} @ {}",
+                context.name, self.0
+            ))))
+        }
+    }
+    struct FixtureDestination(String);
+    impl Destination for FixtureDestination {
+        fn config(&self) -> DestinationConfig {
+            DestinationConfig {
+                name: self.0.clone(),
+                billing_currency: Some("USD".into()),
+            }
+        }
+        fn pricing(&self) -> PricingInterface<'_> {
+            PricingInterface::SessionTotals(self)
+        }
+    }
+    impl SessionPricing for FixtureDestination {
+        fn session_totals(&self, _: &SessionContext) -> Result<(Stats, bool)> {
+            unreachable!("configuration tests do not retrieve bills")
+        }
+    }
+    struct NoCredentials;
+    impl Credentials for NoCredentials {
+        fn api_key(&self, _: Option<&str>) -> Result<String> {
+            panic!("configuration must not read credentials")
+        }
+    }
+
+    const DEFAULTS: &str = r#"
+version = 1
+[[destinations]]
+id = "alpha"
+type = "fixture-a"
+name = "Original"
+api_urls = ["https://alpha.example/v1"]
+[destinations.config]
+endpoint = "original"
+[destinations.conversion]
+currency = "EUR"
+multiplier = 2.0
+[destinations.conversion.source]
+type = "value"
+value = 3.0
+[[destinations]]
+id = "beta"
+type = "fixture-a"
+name = "Independent"
+api_urls = ["https://beta.example/v1"]
+[destinations.config]
+endpoint = "independent"
+"#;
+
+    fn created_name(instance: &Instance) -> String {
+        instance
+            .factory
+            .create(CreateContext {
+                name: instance.name.clone(),
+                credentials: Arc::new(NoCredentials),
+            })
+            .unwrap()
+            .config()
+            .name
+    }
+
+    #[test]
+    fn overrides_preserve_inherited_fields_and_replace_routes_and_destination_types() {
+        let fixture = Fixture::new("merge", DEFAULTS);
+        let loaded = fixture
+            .load(
+                r#"
+version = 1
+[[destinations]]
+id = "alpha"
+name = "Renamed"
+api_urls = ["https://replacement.example/v1/"]
+[destinations.conversion]
+multiplier = 4.0
+"#,
+            )
+            .unwrap();
+        assert_eq!(created_name(loaded.instance("alpha")), "Renamed @ original");
         assert_eq!(
             loaded
                 .mappings
-                .destination_id("https://cc2.caaa.tech/v1")
+                .destination_id("https://replacement.example/v1")
                 .unwrap(),
-            "cc2"
+            "alpha"
+        );
+        assert!(
+            loaded
+                .mappings
+                .destination_id("https://alpha.example/v1")
+                .is_err()
         );
         assert_eq!(
-            loaded.instance("deepseek").factory.warnings(),
-            ["Only off-peak prices are shown; estimated costs may be lower than actual charges."]
+            created_name(loaded.instance("beta")),
+            "Independent @ independent"
         );
-        assert!(loaded.instance("openai").factory.warnings().is_empty());
+        let payment = loaded
+            .instance("alpha")
+            .conversion
+            .as_ref()
+            .unwrap()
+            .initial_payment()
+            .unwrap()
+            .unwrap();
+        assert_eq!(payment.payment_currency, "EUR");
+        assert_eq!(payment.exchange_rate, 12.0);
+        let switched = fixture
+            .load(
+                r#"
+version = 1
+[[destinations]]
+id = "alpha"
+type = "fixture-b"
+[destinations.config]
+selector = "replacement"
+"#,
+            )
+            .unwrap();
+        // fixture-b rejects endpoint; successful loading proves stale type fields were removed.
+        assert_eq!(
+            created_name(switched.instance("alpha")),
+            "Original @ replacement"
+        );
+        assert_eq!(switched.instance("alpha").kind, "fixture-b");
+        assert!(switched.instance("alpha").conversion.is_some());
+    }
+
+    #[test]
+    fn conversion_source_type_changes_discard_old_format_fields_and_can_be_disabled() {
+        let defaults = DEFAULTS.replace(
+            "type = \"value\"\nvalue = 3.0",
+            "type = \"json\"\nurl = \"https://rates.example/data\"\npointer = \"/rate\"",
+        );
+        let fixture = Fixture::new("source-switch", &defaults);
+        let loaded = fixture
+            .load(
+                r#"
+version = 1
+[[destinations]]
+id = "alpha"
+[destinations.conversion.source]
+type = "value"
+value = 5.0
+"#,
+            )
+            .unwrap();
+        let conversion = loaded.instance("alpha").conversion.as_ref().unwrap();
+        assert_eq!(
+            conversion.initial_payment().unwrap().unwrap().exchange_rate,
+            10.0
+        );
+        assert_eq!(conversion.settings().unwrap().currency, "EUR");
+        let disabled = fixture.load("version = 1\n[[destinations]]\nid = 'alpha'\n[destinations.conversion]\nenabled = false").unwrap();
+        assert!(disabled.instance("alpha").conversion.is_none());
+        let bad_override = "version = 1\n[[destinations]]\nid = 'alpha'\n[destinations.conversion]\nenabled = false\nmultiplier = -1";
+        fixture.error(
+            bad_override,
+            fixture.paths.user.as_ref().unwrap(),
+            "alpha",
+            "conversion.multiplier",
+        );
+    }
+
+    #[test]
+    fn invalid_configuration_reports_instance_field_and_the_responsible_layer() {
+        let fixture = Fixture::new("provenance", DEFAULTS);
+        let user = fixture.paths.user.as_ref().unwrap();
+        fixture.error(
+            "version = 1\n[[destinations]]\nid = 'alpha'\n[destinations.config]\nendpoint = 42",
+            user,
+            "alpha",
+            "config.endpoint",
+        );
+        fixture.error(
+            "version = 1\n[[destinations]]\nid = 'alpha'\ntype = 'fixture-b'",
+            user,
+            "alpha",
+            "config.selector",
+        );
+        fixture.error("version = 1\n[[destinations]]\nid = 'alpha'\n[destinations.conversion.source]\ntype = 'xml'\nurl = 'https://rates.example/data'", user, "alpha", "conversion.source.xpath");
+        let error = fixture.error(
+            "version = 1\n[[destinations]]\nid = 'alpha'\napi_urls = ['https://beta.example/v1/']",
+            &fixture.paths.defaults,
+            "beta",
+            "api_urls",
+        );
+        assert!(
+            error.contains(&format!("{}: instance 'alpha': api_urls", user.display())),
+            "{error}"
+        );
+        // A valid partial override must not hide a missing required default field.
+        std::fs::write(
+            &fixture.paths.defaults,
+            DEFAULTS.replace("endpoint = \"original\"", ""),
+        )
+        .unwrap();
+        fixture.error(
+            "version = 1\n[[destinations]]\nid = 'alpha'\nname = 'Renamed'",
+            &fixture.paths.defaults,
+            "alpha",
+            "config.endpoint",
+        );
     }
 
     #[test]
@@ -473,7 +740,7 @@ mod tests {
             defaults: select_defaults(&candidates).unwrap(),
             user: None,
         };
-        assert!(load_with_registry(&paths, &crate::dest::builtins::registry().unwrap()).is_err());
+        assert!(load_with_registry(&paths, &Registry::new()).is_err());
         std::fs::remove_file(&candidates[0]).unwrap();
         symlink(root.join("missing"), &candidates[0]).unwrap();
         assert!(select_defaults(&candidates).is_err());

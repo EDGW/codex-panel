@@ -26,7 +26,7 @@ jobs:
           targets: aarch64-apple-darwin
 
       - name: Run unit tests
-        run: cargo test --locked --lib --bins
+        run: cargo test --locked --lib --bins --tests
 
       - name: Build Apple Silicon executable
         run: cargo build --locked --release --target aarch64-apple-darwin
@@ -96,7 +96,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Run unit tests
-        run: cargo test --locked --lib --bins
+        run: cargo test --locked --lib --bins --tests
 
       - name: Build Linux executable
         run: cargo build --locked --release --target ${{ matrix.target }}
