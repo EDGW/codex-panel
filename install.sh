@@ -9,7 +9,7 @@ main() (
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --version)
-        [ "$#" -ge 2 ] || die '--version requires a release tag (for example v0.1.2)'
+        [ "$#" -ge 2 ] || die '--version requires a release tag (for example v0.1.3)'
         version=$2
         [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.-]+)?$ ]] || die "Invalid release tag: $version"
         shift 2

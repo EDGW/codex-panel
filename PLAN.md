@@ -1,6 +1,6 @@
 # LLMRates 重构计划与完成记录
 
-目标：以 LLMRates 聚合价格替换 DeepSeek destination，按 provider slug 获取模型价格，优先使用 display currency，缺失时回退至源币种；普通面板提供 destination 自有展示区；覆盖 apikey-names.json 的全部 mappings。
+目标：以 LLMRates 聚合价格替换 DeepSeek destination，按 provider slug 获取模型价格，优先使用 display currency，缺失时回退至源币种；普通面板提供 destination 自有展示区；覆盖默认配置的全部 API 地址映射。
 
 1. 已完成：核实在线 `/api/dataset` 的真实响应、每百万 token 单价、多币种、标准价格行和模型标识；使用完整数据集实现币种选择。
 2. 已完成：审计接口和测试边界。具体 provider 留在适配器与注册组装处；配置发现、HTTP 获取、JSON/XML 提取、数值校验、缓存、费用累计与展示各自负责。共享层测试使用契约替身，删除 provider 专属及静态重复断言。

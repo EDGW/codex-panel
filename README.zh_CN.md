@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | 
 再次执行安装命令即可升级。指定版本安装：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash -s -- --version v0.1.2
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash -s -- --version v0.1.3
 ```
 
 卸载时运行：
@@ -79,8 +79,8 @@ Linux 包在 Ubuntu 24.04 上构建，需要兼容的系统库（glibc 2.39 或�
 从同一 Release 下载 `codex-panel_<版本>_amd64.deb` 或 `codex-panel_<版本>_arm64.deb` 及对应的 `.sha256` 文件。例如：
 
 ```sh
-sha256sum --check codex-panel_0.1.2_amd64.deb.sha256
-sudo apt install ./codex-panel_0.1.2_amd64.deb
+sha256sum --check codex-panel_0.1.3_amd64.deb.sha256
+sudo apt install ./codex-panel_0.1.3_amd64.deb
 codex-panel --panel-version
 ```
 
@@ -163,7 +163,7 @@ hub_url = "https://billing.example.com"
 
 ### models.dev
 
-`models_dev` 使用 [models.dev 数据集](https://models.dev/api.json?type=all) 估算 token 费用。默认配置根据当前 226 个供应商重写：启用 196 个供应商，覆盖 198 个精确 API 地址，并保留两个 Hub 实例。另外 30 个条目因缺少地址、本地地址、账户占位符或共用地址而默认禁用，原因写在注释中。名称、供应商 ID 和已发布地址来自数据集；对应供应商已有的明确 API 地址保留为配置别名。当前数据集没有 Runway 和 SambaNova，因此不为它们配置默认价格源。`apikey-names.json` 保存抓取来源、时间、启用的地址映射和禁用原因。
+`models_dev` 使用 [models.dev 数据集](https://models.dev/api.json?type=all) 估算 token 费用。默认配置根据当前 226 个供应商重写：启用 196 个供应商，覆盖 198 个精确 API 地址，并保留两个 Hub 实例。另外 30 个条目因缺少地址、本地地址、账户占位符或共用地址而默认禁用，原因写在注释中。名称、供应商 ID 和已发布地址来自数据集；对应供应商已有的明确 API 地址保留为配置别名。当前数据集没有 Runway 和 SambaNova，因此不为它们配置默认价格源。
 
 ```toml
 [[destinations]]

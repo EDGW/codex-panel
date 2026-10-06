@@ -23,7 +23,7 @@ The `codex-panel` and `codex-panel-remove` commands are placed in `~/.local/bin`
 Run the same installation command again to upgrade. To select a specific release:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash -s -- --version v0.1.2
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash -s -- --version v0.1.3
 ```
 
 Uninstall with:
@@ -79,8 +79,8 @@ Linux packages are built on Ubuntu 24.04 and require compatible system libraries
 Download `codex-panel_<version>_amd64.deb` or `codex-panel_<version>_arm64.deb` and its `.sha256` file from the same release. For example:
 
 ```sh
-sha256sum --check codex-panel_0.1.2_amd64.deb.sha256
-sudo apt install ./codex-panel_0.1.2_amd64.deb
+sha256sum --check codex-panel_0.1.3_amd64.deb.sha256
+sudo apt install ./codex-panel_0.1.3_amd64.deb
 codex-panel --panel-version
 ```
 
@@ -163,7 +163,7 @@ Set the provider's `base_url` in Codex's `config.toml`. Temporary overrides supp
 
 ### models.dev
 
-`models_dev` estimates token costs using the [models.dev catalog](https://models.dev/api.json?type=all). The defaults were rebuilt from 226 catalog providers: 196 enabled providers with 198 exact API URL mappings, plus the two Hub instances. The remaining 30 providers are disabled with comments explaining missing, local, account-specific or shared endpoints. Names, provider IDs and published URLs come from the catalog; matching existing concrete API URLs are retained as explicit aliases. Runway and SambaNova are absent from the current catalog and have no default price destination. `apikey-names.json` records the crawl source, timestamp, enabled mappings and disabled providers.
+`models_dev` estimates token costs using the [models.dev catalog](https://models.dev/api.json?type=all). The defaults were rebuilt from 226 catalog providers: 196 enabled providers with 198 exact API URL mappings, plus the two Hub instances. The remaining 30 providers are disabled with comments explaining missing, local, account-specific or shared endpoints. Names, provider IDs and published URLs come from the catalog; matching existing concrete API URLs are retained as explicit aliases. Runway and SambaNova are absent from the current catalog and have no default price destination.
 
 ```toml
 [[destinations]]

@@ -60,7 +60,7 @@ else:
         (mocks / command).symlink_to(mocks / "mock")
 
     releases = sandbox / "releases"
-    latest = "v0.1.2"
+    latest = "v0.1.3"
     actual_binary = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else None
     if actual_binary:
         latest = subprocess.check_output(

@@ -127,6 +127,9 @@ fn launch(args: &[OsString]) -> AppResult<()> {
     if let Some(output) = runtime.exit_output() {
         if !output.trim().is_empty() {
             println!("{}\x1b[0m", output.trim());
+            println!(
+                "\x1b[34mTip: Replace `codex` with `codex-panel` to run the commands above.\x1b[0m"
+            );
         }
     } else if tmux.session_exists()? {
         // Ctrl-b d detaches; the live child processes still need their state and proxy socket.
