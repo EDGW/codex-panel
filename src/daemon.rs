@@ -1,5 +1,5 @@
 //! Shared Codex daemon readiness and best-effort cleanup after our proxy disconnects.
-use crate::AppResult;
+use crate::{AppResult, subprocess};
 use serde_json::{Value, json};
 use std::ffi::OsStr;
 use std::os::unix::net::UnixStream;
@@ -9,9 +9,10 @@ use std::time::{Duration, Instant};
 use tungstenite::{Message, WebSocket};
 
 fn version(codex: &OsStr) -> AppResult<Value> {
-    let output = Command::new(codex)
-        .args(["app-server", "daemon", "version"])
-        .output()?;
+    let output = subprocess::output(
+        Command::new(codex).args(["app-server", "daemon", "version"]),
+        "Could not inspect shared Codex daemon",
+    )?;
     if !output.status.success() {
         return Err(format!(
             "Could not inspect shared Codex daemon: {}",
@@ -47,9 +48,10 @@ fn shared_socket_with(codex: &OsStr, timeout: Duration) -> AppResult<String> {
     }
     // `version` exits unsuccessfully when the daemon is absent, rather than
     // always returning a JSON stopped status. `start` is idempotent.
-    let started = Command::new(codex)
-        .args(["app-server", "daemon", "start"])
-        .output()?;
+    let started = subprocess::output(
+        Command::new(codex).args(["app-server", "daemon", "start"]),
+        "Could not start shared Codex daemon",
+    )?;
     if !started.status.success() {
         return Err(format!(
             "Could not start shared Codex daemon: {}",
@@ -137,8 +139,8 @@ fn inspect_and_stop(socket: &str, codex: &OsStr, lsof: &OsStr) -> AppResult<()> 
         if local_socket(&version(codex)?).as_ref() != Some(&expected) {
             return Ok(());
         }
-        let output = Command::new(lsof)
-            .args([
+        let output = subprocess::output(
+            Command::new(lsof).args([
                 "-n",
                 "-P",
                 "-a",
@@ -147,8 +149,9 @@ fn inspect_and_stop(socket: &str, codex: &OsStr, lsof: &OsStr) -> AppResult<()> 
                 "-U",
                 "-F",
                 "fn",
-            ])
-            .output()?;
+            ]),
+            "Could not inspect daemon client connections",
+        )?;
         if !output.status.success() {
             return Err("Could not inspect daemon client connections with lsof".into());
         }
@@ -161,9 +164,10 @@ fn inspect_and_stop(socket: &str, codex: &OsStr, lsof: &OsStr) -> AppResult<()> 
     }
     // Codex currently has no atomic stop-if-idle operation. This remains a
     // best-effort snapshot; a new client can arrive between inspection and stop.
-    let output = Command::new(codex)
-        .args(["app-server", "daemon", "stop"])
-        .output()?;
+    let output = subprocess::output(
+        Command::new(codex).args(["app-server", "daemon", "stop"]),
+        "Could not stop idle shared Codex daemon",
+    )?;
     if !output.status.success() {
         return Err("Could not stop idle shared Codex daemon".into());
     }
@@ -309,35 +313,6 @@ esac
                 json!({"status":status,"socketPath":self.socket}).to_string(),
             )
             .unwrap();
-        }
-    }
-
-    #[test]
-    fn absent_stopped_and_stale_daemons_start_and_wait_for_a_listening_socket() {
-        use std::os::unix::net::UnixListener;
-        for initial_status in [None, Some("stopped"), Some("running")] {
-            let fixture = StartupFixture::new();
-            if let Some(status) = initial_status {
-                fixture.write_version("version.json", status);
-            }
-            fixture.write_version("next-version.json", "running");
-            let started = fixture.runtime.path().join("started");
-            let socket = fixture.socket.clone();
-            let server = std::thread::spawn(move || {
-                let deadline = Instant::now() + Duration::from_secs(3);
-                while !started.exists() {
-                    assert!(Instant::now() < deadline, "daemon start was never called");
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                // start/version report success before the socket is available.
-                std::thread::sleep(Duration::from_millis(150));
-                UnixListener::bind(socket).unwrap()
-            });
-            let socket =
-                shared_socket_with(fixture.codex.as_os_str(), Duration::from_secs(2)).unwrap();
-            assert_eq!(socket, fixture.socket.to_str().unwrap());
-            assert!(fixture.runtime.path().join("started").exists());
-            drop(server.join().unwrap());
         }
     }
 

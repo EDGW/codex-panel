@@ -6,21 +6,89 @@ English | [简体中文](./README.zh_CN.md)
 
 Adds a cost panel to Codex CLI: the native interface stays at the top, while the panel below shows the current session's total cost, the additional cost incurred during monitoring, and the request count.
 
-Supports billing platforms based on [Claude Code Hub](https://github.com/ding113/claude-code-hub) and token-based cost estimates using models.dev. Billing amounts can be converted to a payment currency using a fixed value, a JSON source, or an XML source.
+Supports Linux x86_64 and ARM64, and macOS Apple Silicon. Supports billing platforms based on [Claude Code Hub](https://github.com/ding113/claude-code-hub) and token-based cost estimates using models.dev. Billing amounts can be converted to a payment currency using a fixed value, a JSON source, or an XML source.
 
 ## Download and Usage
 
-On Apple Silicon Macs, download `codex-panel-aarch64-apple-darwin.tar.gz` from [GitHub Releases](https://github.com/EDGW/codex-panel/releases). Install tmux and Codex CLI, then extract and run:
+### Linux One-line Install
 
 ```sh
-tar -xzf codex-panel-aarch64-apple-darwin.tar.gz
-cd codex-panel-aarch64-apple-darwin
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash
+```
+
+The installer detects x86_64 or ARM64, downloads the latest GitHub release (including pre-releases), verifies its SHA-256 checksum, and installs for the current user without sudo. Selecting the latest release requires Python 3; `--version` skips this requirement. Linux releases require glibc 2.39 or newer. Install tmux, lsof, and Codex CLI separately.
+
+The `codex-panel` and `codex-panel-remove` commands are placed in `~/.local/bin`; the executable and defaults are stored in `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/installation/`. If needed, the installer adds `~/.local/bin` to PATH in Bash, Zsh, and POSIX shell startup files. Open a new terminal or run the printed `export PATH=…` command to use them in your current terminal.
+
+Run the same installation command again to upgrade. To select a specific release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash -s -- --version v0.1.2
+```
+
+Uninstall with:
+
+```sh
+codex-panel-remove
+```
+
+This removes the script installation and its PATH entries, while preserving `~/.codex-panel/` and Codex configuration. Choose one installation method; the script refuses to overwrite commands installed by another method.
+
+### Homebrew
+
+Linux and macOS also support Homebrew:
+
+```sh
+brew install EDGW/tap/codex-panel
+```
+
+Upgrade with:
+
+```sh
+brew update
+brew upgrade codex-panel
+```
+
+Install Codex CLI separately. It must support `--remote unix://` and the daemon; version 0.159.3 has been verified.
+
+### Release Archives
+
+Download the archive for your platform from [GitHub Releases](https://github.com/EDGW/codex-panel/releases):
+
+| Platform | Archive |
+| --- | --- |
+| Linux x86_64 | `codex-panel-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux ARM64 | `codex-panel-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS Apple Silicon | `codex-panel-aarch64-apple-darwin.tar.gz` |
+
+Install tmux and Codex CLI, then extract and run. For example, on Linux x86_64:
+
+```sh
+sha256sum --check codex-panel-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar -xzf codex-panel-x86_64-unknown-linux-gnu.tar.gz
+cd codex-panel-x86_64-unknown-linux-gnu
 ./codex-panel
 ```
 
-The archive includes the executable and its default `destinations.toml`; keep them together. Rust is only required when building from source. Each release also includes a `.tar.gz.sha256` checksum file.
+Use the corresponding filename for ARM64 or macOS; on macOS, verify the checksum with `shasum -a 256 -c FILE.sha256`. Archives contain the executable, default `destinations.toml`, both READMEs, and license. Keep the executable and defaults together. Rust is only required for source builds.
 
-Publishing a GitHub Release automatically runs the release workflow against its tag, builds the Apple Silicon executable, and uploads the archive and checksum. Draft releases do not trigger the build.
+Linux packages are built on Ubuntu 24.04 and require compatible system libraries (glibc 2.39 or newer). For a manual Linux installation, place the executable in `~/.local/bin/codex-panel` and defaults in `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/destinations.toml`. Upgrade by replacing both files; personal overrides remain separate.
+
+### Debian / Ubuntu Packages
+
+Download `codex-panel_<version>_amd64.deb` or `codex-panel_<version>_arm64.deb` and its `.sha256` file from the same release. For example:
+
+```sh
+sha256sum --check codex-panel_0.1.2_amd64.deb.sha256
+sudo apt install ./codex-panel_0.1.2_amd64.deb
+codex-panel --panel-version
+```
+
+Use `arm64` for ARM64. apt installs tmux, lsof, CA certificates and required system libraries; install Codex CLI separately. The executable is installed at `/usr/bin/codex-panel`, defaults at `/usr/share/codex-panel/destinations.toml`. Inspect system dependencies with `dpkg-deb -I PACKAGE.deb`.
+
+Upgrade by downloading the new deb and running `sudo apt install ./NEW_PACKAGE.deb`. There is no APT repository, so `apt upgrade` does not discover new releases. Uninstall with `sudo apt remove codex-panel`; personal configuration is preserved. Choose one installation method to avoid another copy taking precedence in PATH.
+
+Publishing a GitHub Release builds and uploads the archives, Linux deb packages and SHA-256 files. Tags must use `vVERSION` matching `Cargo.toml`. Draft releases do not trigger builds.
 
 ## Build from Source
 
@@ -48,12 +116,23 @@ Configuration uses TOML. Every file must include `version = 1`.
 
 | File | Purpose |
 | --- | --- |
-| `destinations.toml` | Default configuration; release builds read the file beside the executable, while development builds read it from the project directory |
+| `destinations.toml` | Default configuration; release builds use the discovery order below, while development builds read it from the project directory |
 | `~/.codex-panel/destinations.toml` | Optional user configuration, created manually; overrides defaults by instance `id` |
 
 Use the user configuration for your changes. To override an existing instance, specify its `id` and only the fields you want to change. Tables are merged by field, while arrays are replaced entirely. Changing an instance's `type` replaces its `config`; changing a conversion source's `type` replaces the entire `source`.
 
 You can also set `CC_PANEL_CONFIG` to specify the user configuration path, or `CC_PANEL_DEFAULTS_CONFIG` to specify the default configuration path. Explicitly specified files must exist.
+
+### Linux default configuration discovery
+
+`CC_PANEL_DEFAULTS_CONFIG` takes precedence. An empty value, missing file, or read failure is an error. When unset, release builds search in this order:
+
+1. `destinations.toml` beside the resolved executable.
+2. `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/destinations.toml`.
+3. `/usr/local/share/codex-panel/destinations.toml`.
+4. `/usr/share/codex-panel/destinations.toml`.
+
+The first existing file is selected. Unreadable files, broken symlinks, and invalid contents are errors. If none exist, the error lists the searched paths. User overrides still come from `CC_PANEL_CONFIG` or `~/.codex-panel/destinations.toml`; upgrades do not overwrite them. Development builds continue to use the project defaults.
 
 ### Billing Instances
 

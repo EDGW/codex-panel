@@ -1,4 +1,4 @@
-name: Release macOS Apple Silicon
+name: Release
 
 on:
   release:
@@ -54,3 +54,146 @@ jobs:
             dist/codex-panel-aarch64-apple-darwin.tar.gz \
             dist/codex-panel-aarch64-apple-darwin.tar.gz.sha256 \
             --clobber
+
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            architecture: amd64
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Verify release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python3 - <<'PYTHON'
+          import os, tomllib
+          with open("Cargo.toml", "rb") as source:
+              version = tomllib.load(source)["package"]["version"]
+          assert os.environ["RELEASE_TAG"] == f"v{version}", "Release tag must match Cargo.toml (vVERSION)"
+          PYTHON
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tmux lsof
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Run unit tests
+        run: cargo test --locked --lib --bins
+
+      - name: Build Linux executable
+        run: cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Package and verify release
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          binary="target/$TARGET/release/codex-panel"
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          test "$("$binary" --panel-version)" = "codex-panel v$version"
+          package="codex-panel-$TARGET"
+          mkdir -p "dist/$package"
+          cp "$binary" destinations.toml README.md README.zh_CN.md LICENSE "dist/$package/"
+          tar -czf "dist/$package.tar.gz" -C dist "$package"
+          cd dist
+          sha256sum "$package.tar.gz" > "$package.tar.gz.sha256"
+          sha256sum --check "$package.tar.gz.sha256"
+          mkdir verify
+          tar -xzf "$package.tar.gz" -C verify
+          test "$("verify/$package/codex-panel" --panel-version)" = "codex-panel v$version"
+          cmp "$package/destinations.toml" "verify/$package/destinations.toml"
+
+      - name: Verify script installation, upgrade and removal
+        env:
+          TARGET: ${{ matrix.target }}
+        run: python3 packaging/test-installer.py "target/$TARGET/release/codex-panel"
+
+      - name: Install Debian packaging tools
+        run: sudo apt-get install -y dpkg-dev
+
+      - name: Build Debian package
+        env:
+          TARGET: ${{ matrix.target }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          bash packaging/package-deb.sh "target/$TARGET/release/codex-panel" "$version" "$ARCHITECTURE" dist
+          cd dist
+          sha256sum --check "codex-panel_${version}_${ARCHITECTURE}.deb.sha256"
+          test "$(dpkg-deb -f "codex-panel_${version}_${ARCHITECTURE}.deb" Architecture)" = "$ARCHITECTURE"
+          test "$(dpkg-deb -f "codex-panel_${version}_${ARCHITECTURE}.deb" Version)" = "$version"
+
+      - name: Verify Debian installation, upgrade and removal
+        env:
+          TARGET: ${{ matrix.target }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          bash packaging/package-deb.sh "target/$TARGET/release/codex-panel" "$version~upgrade-test" "$ARCHITECTURE" upgrade-test
+          mkdir -p "$HOME/.codex-panel"
+          printf 'version = 1\n# upgrade sentinel\n' > "$HOME/.codex-panel/destinations.toml"
+          cp "$HOME/.codex-panel/destinations.toml" user-config-before.toml
+          sudo apt-get install -y "$PWD/upgrade-test/codex-panel_${version}~upgrade-test_${ARCHITECTURE}.deb"
+          sudo apt-get install -y "$PWD/dist/codex-panel_${version}_${ARCHITECTURE}.deb"
+          test "$(dpkg-query -W -f='${Version}' codex-panel)" = "$version"
+          test "$(/usr/bin/codex-panel --panel-version)" = "codex-panel v$version"
+          cmp destinations.toml /usr/share/codex-panel/destinations.toml
+          cmp user-config-before.toml "$HOME/.codex-panel/destinations.toml"
+          test ! -e /usr/bin/destinations.toml
+          sudo apt-get remove -y codex-panel
+          test ! -e /usr/bin/codex-panel
+          test ! -e /usr/share/codex-panel/destinations.toml
+          cmp user-config-before.toml "$HOME/.codex-panel/destinations.toml"
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            "dist/codex-panel-$TARGET.tar.gz" \
+            "dist/codex-panel-$TARGET.tar.gz.sha256" \
+            --clobber
+
+      - name: Upload Debian release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          gh release upload "$RELEASE_TAG" \
+            "dist/codex-panel_${version}_${ARCHITECTURE}.deb" \
+            "dist/codex-panel_${version}_${ARCHITECTURE}.deb.sha256" \
+            --clobber
+
+      - name: Upload Linux installer
+        if: matrix.architecture == 'amd64'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" install.sh --clobber

@@ -15,6 +15,7 @@ mod daemon;
 mod panel;
 mod runtime;
 mod session;
+mod subprocess;
 mod tmux;
 mod url;
 

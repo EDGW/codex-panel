@@ -6,21 +6,89 @@
 
 为 Codex CLI 增加费用面板：上方保留原生界面，下方显示当前会话的总费用、本次监视期间新增的费用和请求数。
 
-支持基于 [Claude Code Hub](https://github.com/ding113/claude-code-hub) 的账单平台，以及使用 models.dev 聚合价格估算 token 费用的 provider。可通过固定值、JSON 或 XML 来源将账单金额换算成付款币种。
+支持 Linux x86_64、ARM64 和 macOS Apple Silicon。支持基于 [Claude Code Hub](https://github.com/ding113/claude-code-hub) 的账单平台，以及使用 models.dev 聚合价格估算 token 费用的 provider。可通过固定值、JSON 或 XML 来源将账单金额换算成付款币种。
 
 ## 下载与使用
 
-Apple Silicon Mac 用户可从 [GitHub Releases](https://github.com/EDGW/codex-panel/releases) 下载 `codex-panel-aarch64-apple-darwin.tar.gz`。安装 tmux 和 Codex CLI 后，解压并运行：
+### Linux 一键安装
 
 ```sh
-tar -xzf codex-panel-aarch64-apple-darwin.tar.gz
-cd codex-panel-aarch64-apple-darwin
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash
+```
+
+脚本自动识别 x86_64 或 ARM64，下载 GitHub 最新发布版本（包含预发布版本）并验证 SHA-256，安装到当前用户目录，无需 sudo。自动选择最新版本需要 Python 3，指定 `--version` 时不需要。Linux 发布包需要 glibc 2.39 或更新版本；tmux、lsof 和 Codex CLI 需单独安装。
+
+安装后自动添加 `~/.local/bin/codex-panel` 和 `~/.local/bin/codex-panel-remove` 命令，程序及默认配置位于 `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/installation/`。如果 `~/.local/bin` 不在 PATH 中，脚本会在 Bash、Zsh 和 POSIX shell 的启动配置中添加 PATH 设置。打开新终端即可使用；当前终端可执行安装完成时输出的 `export PATH=…` 命令。
+
+再次执行安装命令即可升级。指定版本安装：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash -s -- --version v0.1.2
+```
+
+卸载时运行：
+
+```sh
+codex-panel-remove
+```
+
+卸载会清理脚本安装的程序、默认配置和 PATH 设置，保留 `~/.codex-panel/` 及 Codex 配置。建议选择一种安装方式；脚本遇到其他方式安装的同名命令时会停止，避免覆盖。
+
+### Homebrew
+
+Linux 和 macOS 也支持通过 Homebrew 安装：
+
+```sh
+brew install EDGW/tap/codex-panel
+```
+
+升级时运行：
+
+```sh
+brew update
+brew upgrade codex-panel
+```
+
+Codex CLI 需单独安装，需支持 `--remote unix://` 和 daemon，已验证版本为 0.159.3。
+
+### 压缩包
+
+从 [GitHub Releases](https://github.com/EDGW/codex-panel/releases) 下载对应平台的压缩包：
+
+| 平台 | 压缩包 |
+| --- | --- |
+| Linux x86_64 | `codex-panel-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux ARM64 | `codex-panel-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS Apple Silicon | `codex-panel-aarch64-apple-darwin.tar.gz` |
+
+安装 tmux 和 Codex CLI 后，解压并运行。以 Linux x86_64 为例：
+
+```sh
+sha256sum --check codex-panel-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar -xzf codex-panel-x86_64-unknown-linux-gnu.tar.gz
+cd codex-panel-x86_64-unknown-linux-gnu
 ./codex-panel
 ```
 
-压缩包包含可执行文件和默认的 `destinations.toml`，移动时请保持两者在同一目录。只有从源码构建时才需要 Rust。每个发布版本还提供 `.tar.gz.sha256` 校验文件。
+ARM64 和 macOS 使用对应文件名；macOS 使用 `shasum -a 256 -c 文件.sha256` 校验。压缩包包含可执行文件、默认的 `destinations.toml`、中英文说明和许可证，移动时请保持程序和默认配置在同一目录。只有从源码构建时才需要 Rust。
 
-发布 GitHub Release 后，工作流会自动检出对应标签，编译 Apple Silicon 版本，并上传压缩包和校验文件。保存为草稿不会触发构建。
+Linux 包在 Ubuntu 24.04 上构建，需要兼容的系统库（glibc 2.39 或更新版本）。手动安装时，可将程序放在 `~/.local/bin/codex-panel`，默认配置放在 `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/destinations.toml`。升级时替换这两个文件，个人配置独立保留。
+
+### Debian / Ubuntu 安装包
+
+从同一 Release 下载 `codex-panel_<版本>_amd64.deb` 或 `codex-panel_<版本>_arm64.deb` 及对应的 `.sha256` 文件。例如：
+
+```sh
+sha256sum --check codex-panel_0.1.2_amd64.deb.sha256
+sudo apt install ./codex-panel_0.1.2_amd64.deb
+codex-panel --panel-version
+```
+
+ARM64 使用 `arm64` 文件。apt 会安装 tmux、lsof、CA 证书及所需系统库，Codex CLI 需单独安装。程序安装到 `/usr/bin/codex-panel`，默认配置安装到 `/usr/share/codex-panel/destinations.toml`。可通过 `dpkg-deb -I 文件.deb` 查看系统依赖。
+
+下载新版 deb 后再次执行 `sudo apt install ./新版文件.deb` 即可替换旧版本。暂不提供 APT 仓库，`apt upgrade` 不会自动发现本项目的新版本。通过 `sudo apt remove codex-panel` 卸载，个人配置保留。建议选择一种安装方式，避免 PATH 命中其他副本。
+
+发布 GitHub Release 后，工作流会构建并上传上述压缩包、Linux deb 包及 SHA-256 校验文件。标签使用 `v版本号`，需与 `Cargo.toml` 一致。保存为草稿不会触发构建。
 
 ## 从源码构建
 
@@ -48,12 +116,23 @@ Codex 默认在运行 `codex-panel` 时的当前工作目录中打开。可在�
 
 | 文件 | 用途 |
 | --- | --- |
-| `destinations.toml` | 默认配置；发布构建读取可执行文件旁的文件，开发构建读取项目目录中的文件 |
+| `destinations.toml` | 默认配置；发布构建按下方顺序查找，开发构建读取项目目录中的文件 |
 | `~/.codex-panel/destinations.toml` | 可选用户配置，需自行创建，按实例 `id` 覆盖默认值 |
 
 建议修改用户配置。覆盖已有实例时只需填写 `id` 和要修改的字段；表按字段合并，数组整体替换。改变实例 `type` 会替换其 `config`，改变转换来源 `type` 会替换整个 `source`。
 
 也可通过 `CC_PANEL_CONFIG` 指定用户配置路径，通过 `CC_PANEL_DEFAULTS_CONFIG` 指定默认配置路径；指定的文件必须存在。
+
+### Linux 默认配置查找
+
+`CC_PANEL_DEFAULTS_CONFIG` 优先级最高；已设置但为空、文件缺失或读取失败时直接报错。未设置时，发布构建按顺序查找：
+
+1. 实际可执行文件旁的 `destinations.toml`（解析软链接）。
+2. `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/destinations.toml`。
+3. `/usr/local/share/codex-panel/destinations.toml`。
+4. `/usr/share/codex-panel/destinations.toml`。
+
+使用第一个存在的文件；文件不可读、软链接损坏或内容错误时直接报错。全部缺失时列出查找路径。个人配置仍从 `CC_PANEL_CONFIG` 或 `~/.codex-panel/destinations.toml` 读取并合并，升级不会改写个人配置。
 
 ### 账单实例
 

@@ -1,5 +1,5 @@
 //! Codex process lifecycle and native exit-output capture, independent of panel rendering.
-use crate::{AppResult, bridge, runtime::RuntimeDir, session::Session, tmux::Tmux};
+use crate::{AppResult, bridge, runtime::RuntimeDir, session::Session, subprocess, tmux::Tmux};
 use std::ffi::OsString;
 use std::os::unix::net::UnixListener;
 use std::path::Path;
@@ -25,7 +25,7 @@ fn command(args: &[OsString]) -> Command {
 }
 
 pub(crate) fn passthrough(args: &[OsString]) -> AppResult<ExitStatus> {
-    Ok(command(args).status()?)
+    subprocess::status(&mut command(args), "Could not start Codex CLI")
 }
 
 fn remote_command(mut command: Command, args: &[OsString], socket: &Path, cwd: &Path) -> Command {
@@ -70,7 +70,10 @@ pub(crate) fn run(
             });
         }
     });
-    let status = remote_command(command(&[]), args, &socket, &cwd).status();
+    let status = subprocess::status(
+        &mut remote_command(command(&[]), args, &socket, &cwd),
+        "Could not start Codex CLI",
+    );
     stop.store(true, Ordering::Relaxed);
     let _ = worker.join();
     if let Ok(output) = tmux.capture(pane) {
@@ -81,7 +84,7 @@ pub(crate) fn run(
         );
         runtime.save_exit(&output)?;
     }
-    Ok(status?)
+    status
 }
 
 #[cfg(test)]
