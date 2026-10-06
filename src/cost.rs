@@ -1,6 +1,6 @@
 use crate::dest::{
-    Destination, DestinationConfig, PaymentInfo, PricingInterface, Result, SessionContext, Stats,
-    TokenQuote, TokenRequest, TokenUsage,
+    Destination, DestinationConfig, PricingInterface, Result, SessionContext, Stats, TokenQuote,
+    TokenRequest, TokenUsage,
 };
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, mpsc};
@@ -18,46 +18,20 @@ pub enum CostStatus {
     NotAvailable,
 }
 
-impl CostStatus {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Connecting => "Connecting...",
-            Self::Connected => "Connected",
-            Self::Reconnected => "Reconnected",
-            Self::Reconnecting => "Reconnecting...",
-            Self::Unavailable => "Unavailable",
-            Self::NotAvailable => "Not available",
-        }
-    }
-
-    pub fn is_warning(self) -> bool {
-        matches!(self, Self::Reconnecting | Self::Unavailable)
-    }
+/// A billed amount in its original currency, before payment conversion.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Money {
+    pub amount: f64,
+    pub currency: String,
 }
 
-/// Separate primary amounts from ancillary counts and connection state.
-#[derive(Clone, Debug, Default)]
-pub struct CostDisplay {
-    pub amount: Option<String>,
+/// None denotes unavailable amounts; an empty list denotes zero before a currency is known.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CostSnapshot {
+    pub amounts: Option<Vec<Money>>,
     pub requests: Option<u64>,
     pub estimated: bool,
     pub status: CostStatus,
-}
-
-impl std::fmt::Display for CostDisplay {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(amount) = &self.amount {
-            write!(f, "{amount}")?;
-            if let Some(requests) = self.requests {
-                write!(f, " | {requests} Requests")?;
-            }
-            if self.estimated {
-                write!(f, " · Estimated")?;
-            }
-            write!(f, " · ")?;
-        }
-        f.write_str(self.status.label())
-    }
 }
 
 /// Host telemetry translated into destination-independent data.
@@ -425,93 +399,64 @@ impl Monitor {
         }
     }
 
-    fn display_stats(&self, stats: Option<&Stats>, payment: Option<&PaymentInfo>) -> CostDisplay {
+    fn session_snapshot(&self, stats: Option<&Stats>) -> CostSnapshot {
         let Some(stats) = stats else {
-            return CostDisplay {
+            return CostSnapshot {
                 status: self.status(),
-                ..CostDisplay::default()
+                ..Default::default()
             };
         };
         let Some(currency) = &self.config.billing_currency else {
-            return CostDisplay {
+            return CostSnapshot {
                 status: CostStatus::Unavailable,
-                ..CostDisplay::default()
+                ..Default::default()
             };
         };
-        let prefix = if currency == "USD" { "$" } else { "" };
-        let converted = payment
-            .map(|payment| {
-                format!(
-                    " ({:.6} {})",
-                    stats.amount * payment.exchange_rate,
-                    payment.payment_currency
-                )
-            })
-            .unwrap_or_default();
-        CostDisplay {
-            amount: Some(format!("{prefix}{:.8} {currency}{converted}", stats.amount)),
+        CostSnapshot {
+            amounts: Some(vec![Money {
+                amount: stats.amount,
+                currency: currency.clone(),
+            }]),
             requests: stats.requests,
-            estimated: self.local,
+            estimated: false,
             status: self.status(),
         }
     }
 
-    pub fn session_display(&self, payment: Option<&PaymentInfo>) -> CostDisplay {
+    pub fn session_cost(&self) -> CostSnapshot {
         if self.local {
-            return CostDisplay {
+            return CostSnapshot {
                 status: CostStatus::NotAvailable,
                 estimated: true,
                 ..Default::default()
             };
         }
-        self.display_stats(self.stats.as_ref(), payment)
+        self.session_snapshot(self.stats.as_ref())
     }
 
-    pub fn monitoring_display(&self, payment: Option<&PaymentInfo>) -> CostDisplay {
-        if self.local {
-            return self.display_tokens(&self.token_monitoring, payment);
+    pub fn monitoring_cost(&self) -> CostSnapshot {
+        if !self.local {
+            return self.session_snapshot((!self.accounted.is_empty()).then_some(&self.monitoring));
         }
-        let stats = (!self.accounted.is_empty()).then_some(&self.monitoring);
-        self.display_stats(stats, payment)
-    }
-
-    fn display_tokens(
-        &self,
-        amounts: &BTreeMap<String, Stats>,
-        payment: Option<&PaymentInfo>,
-    ) -> CostDisplay {
-        let amount = (!amounts.is_empty()).then(|| {
-            amounts
-                .iter()
-                .map(|(currency, stats)| {
-                    let prefix = if currency == "USD" { "$" } else { "" };
-                    let converted = payment
-                        .filter(|_| self.config.billing_currency.as_ref() == Some(currency))
-                        .map(|payment| {
-                            format!(
-                                " ({:.6} {})",
-                                stats.amount * payment.exchange_rate,
-                                payment.payment_currency
-                            )
-                        })
-                        .unwrap_or_default();
-                    format!("{prefix}{:.8} {currency}{converted}", stats.amount)
-                })
-                .collect::<Vec<_>>()
-                .join(" + ")
-        });
-        let amount = amount.or_else(|| {
-            let currency = self.config.billing_currency.as_deref().unwrap_or("");
-            let prefix = if currency == "USD" { "$" } else { "" };
-            Some(if currency.is_empty() {
-                "0.00000000".into()
-            } else {
-                format!("{prefix}0.00000000 {currency}")
+        let mut amounts: Vec<_> = self
+            .token_monitoring
+            .iter()
+            .map(|(currency, stats)| Money {
+                amount: stats.amount,
+                currency: currency.clone(),
             })
-        });
-        CostDisplay {
-            amount,
-            requests: Some(amounts.values().fold(0u64, |total, stats| {
+            .collect();
+        if amounts.is_empty()
+            && let Some(currency) = &self.config.billing_currency
+        {
+            amounts.push(Money {
+                amount: 0.0,
+                currency: currency.clone(),
+            });
+        }
+        CostSnapshot {
+            amounts: Some(amounts),
+            requests: Some(self.token_monitoring.values().fold(0u64, |total, stats| {
                 total.saturating_add(stats.requests.unwrap_or(0))
             })),
             estimated: true,
@@ -519,24 +464,12 @@ impl Monitor {
         }
     }
 
-    pub fn billing_currencies(&self) -> String {
+    pub fn billing_currencies(&self) -> Vec<String> {
         if self.local {
-            self.token_monitoring
-                .keys()
-                .cloned()
-                .collect::<Vec<_>>()
-                .join(" + ")
+            self.token_monitoring.keys().cloned().collect()
         } else {
-            self.config.billing_currency.clone().unwrap_or_default()
+            self.config.billing_currency.iter().cloned().collect()
         }
-    }
-
-    pub fn session_line(&self, payment: Option<&PaymentInfo>) -> String {
-        self.session_display(payment).to_string()
-    }
-
-    pub fn monitoring_line(&self, payment: Option<&PaymentInfo>) -> String {
-        self.monitoring_display(payment).to_string()
     }
 
     pub fn detail(&self) -> &str {
@@ -555,6 +488,32 @@ impl Monitor {
 mod tests {
     use super::*;
     use crate::dest::{SessionPricing, TokenPrices, TokenPricing, TokenQuote};
+
+    fn assert_cost(
+        cost: CostSnapshot,
+        amounts: &[(&str, f64)],
+        requests: Option<u64>,
+        estimated: bool,
+        status: CostStatus,
+    ) {
+        assert_eq!(
+            cost,
+            CostSnapshot {
+                amounts: Some(
+                    amounts
+                        .iter()
+                        .map(|(currency, amount)| Money {
+                            currency: (*currency).into(),
+                            amount: *amount
+                        })
+                        .collect()
+                ),
+                requests,
+                estimated,
+                status,
+            }
+        );
+    }
 
     struct FakeSessionDestination;
     impl Destination for FakeSessionDestination {
@@ -634,10 +593,13 @@ mod tests {
         let mut monitor = Monitor::new(destination.clone());
         let mut observation = Observation::default();
         assert!(!monitor.update(&observation));
-        assert_eq!(monitor.session_line(None), "Not available");
-        assert_eq!(
-            monitor.monitoring_line(None),
-            "0.00000000 CNY | 0 Requests · Estimated · Connected"
+        assert_eq!(monitor.session_cost().status, CostStatus::NotAvailable);
+        assert_cost(
+            monitor.monitoring_cost(),
+            &[("CNY", 0.0)],
+            Some(0),
+            true,
+            CostStatus::Connected,
         );
         let settle = |monitor: &mut Monitor, observation: &Observation| {
             assert!(monitor.update(observation));
@@ -663,9 +625,12 @@ mod tests {
         observation.requests = vec![request(1, "test-model"), request(2, "cheap-model")];
         settle(&mut monitor, &observation);
         settle(&mut monitor, &observation);
-        assert_eq!(
-            monitor.monitoring_line(None),
-            "3.00000000 CNY | 2 Requests · Estimated · Connected"
+        assert_cost(
+            monitor.monitoring_cost(),
+            &[("CNY", 3.0)],
+            Some(2),
+            true,
+            CostStatus::Connected,
         );
         assert!(!monitor.update(&observation));
         destination
@@ -687,18 +652,24 @@ mod tests {
         // Retry the original response after a temporary source failure.
         monitor.request_failures.get_mut(&3).unwrap().retry_at = Instant::now();
         settle(&mut monitor, &observation);
-        assert_eq!(
-            monitor.monitoring_line(None),
-            "5.00000000 CNY | 3 Requests · Estimated · Reconnected"
+        assert_cost(
+            monitor.monitoring_cost(),
+            &[("CNY", 5.0)],
+            Some(3),
+            true,
+            CostStatus::Reconnected,
         );
-        assert_eq!(monitor.session_line(None), "Not available");
+        assert_eq!(monitor.session_cost().status, CostStatus::NotAvailable);
         assert!(!monitor.update(&observation));
-        assert_eq!(monitor.monitoring_display(None).requests, Some(3));
+        assert_eq!(monitor.monitoring_cost().requests, Some(3));
         observation.requests.push(request(4, "other-currency"));
         settle(&mut monitor, &observation);
-        assert_eq!(
-            monitor.monitoring_line(None),
-            "5.00000000 CNY + $2.00000000 USD | 4 Requests · Estimated · Reconnected"
+        assert_cost(
+            monitor.monitoring_cost(),
+            &[("CNY", 5.0), ("USD", 2.0)],
+            Some(4),
+            true,
+            CostStatus::Reconnected,
         );
     }
 
@@ -749,7 +720,7 @@ mod tests {
             settle(&mut monitor, &observation).as_deref(),
             Some("cheap-model")
         );
-        let costs = monitor.monitoring_display(None);
+        let costs = monitor.monitoring_cost();
         assert_eq!(costs.requests, Some(1));
         assert_eq!(costs.status, CostStatus::Reconnecting);
         assert!(monitor.detail().contains("unknown model"));
@@ -767,10 +738,10 @@ mod tests {
             .requests
             .push(request(5, Some("cheap-model".into())));
         settle(&mut monitor, &observation);
-        assert_eq!(monitor.monitoring_display(None).requests, Some(2));
+        assert_eq!(monitor.monitoring_cost().requests, Some(2));
         monitor.request_failures.get_mut(&4).unwrap().retry_at = Instant::now();
         settle(&mut monitor, &observation);
-        assert_eq!(monitor.monitoring_display(None).requests, Some(3));
+        assert_eq!(monitor.monitoring_cost().requests, Some(3));
         assert_eq!(monitor.token_monitoring["CNY"].amount, 5.0);
         assert!(!monitor.update(&observation));
         assert!(monitor.detail().contains("unknown model"));
@@ -822,19 +793,19 @@ mod tests {
                 requests: Some(105)
             })
         );
-        assert_eq!(
-            monitor.session_line(Some(&PaymentInfo {
-                payment_currency: "CNY".into(),
-                exchange_rate: 0.14
-            })),
-            "$13.00000000 USD (1.820000 CNY) | 105 Requests · Connected"
+        assert_cost(
+            monitor.session_cost(),
+            &[("USD", 13.0)],
+            Some(105),
+            false,
+            CostStatus::Connected,
         );
-        assert_eq!(
-            monitor.monitoring_line(Some(&PaymentInfo {
-                payment_currency: "CNY".into(),
-                exchange_rate: 0.14
-            })),
-            "$3.50000000 USD (0.490000 CNY) | 6 Requests · Connected"
+        assert_cost(
+            monitor.monitoring_cost(),
+            &[("USD", 3.5)],
+            Some(6),
+            false,
+            CostStatus::Connected,
         );
         let job = Job {
             generation: monitor.generation,
@@ -846,7 +817,7 @@ mod tests {
             job,
             result: Err("network error".into()),
         });
-        assert!(monitor.monitoring_line(None).ends_with("Reconnecting..."));
+        assert_eq!(monitor.monitoring_cost().status, CostStatus::Reconnecting);
         assert_eq!(monitor.monitoring.requests, Some(6));
     }
 
@@ -861,7 +832,7 @@ mod tests {
         };
         m.update(&session);
         let job = rx.try_recv().unwrap();
-        assert_eq!(m.session_line(None), "Connecting...");
+        assert_eq!(m.session_cost().status, CostStatus::Connecting);
         m.apply(Reply {
             job,
             result: Ok(Reading::Session(
@@ -872,9 +843,12 @@ mod tests {
                 false,
             )),
         });
-        assert_eq!(
-            m.session_line(None),
-            "$1.00000000 USD | 1 Requests · Connected"
+        assert_cost(
+            m.session_cost(),
+            &[("USD", 1.0)],
+            Some(1),
+            false,
+            CostStatus::Connected,
         );
         m.update(&session);
         assert!(rx.try_recv().is_err());
@@ -928,14 +902,17 @@ mod tests {
                 false,
             )),
         });
-        assert!(m.session_line(None).ends_with("Connected"));
+        assert_eq!(m.session_cost().status, CostStatus::Connected);
         m.apply(Reply {
             job: job(),
             result: Err("network error".into()),
         });
-        assert_eq!(
-            m.session_line(None),
-            "$1.00000000 USD | 1 Requests · Reconnecting..."
+        assert_cost(
+            m.session_cost(),
+            &[("USD", 1.0)],
+            Some(1),
+            false,
+            CostStatus::Reconnecting,
         );
         assert!(m.next.is_some());
         m.apply(Reply {
@@ -948,7 +925,7 @@ mod tests {
                 false,
             )),
         });
-        assert!(m.session_line(None).ends_with("Reconnected"));
+        assert_eq!(m.session_cost().status, CostStatus::Reconnected);
         m.apply(Reply {
             job: job(),
             result: Ok(Reading::Session(
@@ -959,7 +936,7 @@ mod tests {
                 false,
             )),
         });
-        assert!(m.session_line(None).ends_with("Reconnected"));
+        assert_eq!(m.session_cost().status, CostStatus::Reconnected);
         let mut m = test_monitor();
         m.target = Some(SessionContext {
             session_id: "chat".into(),
@@ -976,7 +953,7 @@ mod tests {
             )),
         });
         assert!(
-            m.session_line(None).ends_with("Reconnected"),
+            m.session_cost().status == CostStatus::Reconnected,
             "401 renewal must record interruption even if retry succeeds"
         );
     }

@@ -10,8 +10,8 @@ use unicode_width::UnicodeWidthStr;
 use super::card::{self, clean};
 
 pub(super) struct View<'a> {
-    pub session: &'a crate::cost::CostDisplay,
-    pub monitoring: &'a crate::cost::CostDisplay,
+    pub session: &'a crate::presentation::CostDisplay,
+    pub monitoring: &'a crate::presentation::CostDisplay,
     pub detail: &'a str,
     pub detail_warning: bool,
     pub settings: bool,
@@ -133,7 +133,7 @@ pub(super) fn display_height(view: &View<'_>, width: u16) -> usize {
     crate::tmux::PANEL_HEIGHT + view.display_ui.map_or(0, |ui| ui.height(width) as usize)
 }
 
-fn cost_line(cost: &crate::cost::CostDisplay, label: Option<&str>) -> Line<'static> {
+fn cost_line(cost: &crate::presentation::CostDisplay, label: Option<&str>) -> Line<'static> {
     let mut spans = Vec::new();
     if let Some(label) = label {
         spans.push(Span::styled(format!("{label}: "), card::secondary()));
@@ -301,7 +301,8 @@ pub(super) fn hit(area: Rect, column: u16, row: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cost::{CostDisplay, CostStatus};
+    use crate::cost::CostStatus;
+    use crate::presentation::CostDisplay;
     use ratatui::{Terminal, backend::TestBackend};
 
     fn cell_for<'a>(

@@ -1,10 +1,11 @@
 //! Select destinations from host configuration and keep each destination's monitoring state.
 use crate::AppResult;
 use crate::config::LoadedConfig;
-use crate::cost::{CostDisplay, CostStatus, Monitor, Observation};
+use crate::cost::{CostStatus, Monitor, Observation};
 use crate::credentials::CodexCredentials;
 use crate::dest::registry::CreateContext;
 use crate::exchange::{ConversionDisplay, Exchange};
+use crate::presentation::CostDisplay;
 use crate::session::Session;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -160,7 +161,7 @@ impl Billing {
             || !warnings.is_empty();
         BillingDisplay {
             api_url: self.api_url.clone(),
-            billing_currency: Some(monitor.costs.billing_currencies())
+            billing_currency: Some(monitor.costs.billing_currencies().join(" + "))
                 .filter(|currency| !currency.is_empty()),
             conversion,
             destination: Some(format!(
@@ -180,12 +181,16 @@ impl Billing {
                     }),
                 model,
             }),
-            session: monitor
-                .costs
-                .session_display(monitor.exchange.payment.as_ref()),
-            monitoring: monitor
-                .costs
-                .monitoring_display(monitor.exchange.payment.as_ref()),
+            session: CostDisplay::from_snapshot(
+                &monitor.costs.session_cost(),
+                monitor.exchange.payment.as_ref(),
+                monitor.destination.config().billing_currency.as_deref(),
+            ),
+            monitoring: CostDisplay::from_snapshot(
+                &monitor.costs.monitoring_cost(),
+                monitor.exchange.payment.as_ref(),
+                monitor.destination.config().billing_currency.as_deref(),
+            ),
             detail_warning,
             detail: [
                 session.error.as_deref().unwrap_or(""),

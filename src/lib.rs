@@ -13,6 +13,7 @@ pub mod config;
 mod credentials;
 mod daemon;
 mod panel;
+pub mod presentation;
 mod runtime;
 mod session;
 mod subprocess;
