@@ -21,6 +21,7 @@ pub(super) struct View<'a> {
     pub billing_currency: Option<&'a str>,
     pub conversion: &'a crate::exchange::ConversionDisplay,
     pub settings_ui: Option<&'a dyn crate::dest::DestinationSettings>,
+    pub display_ui: Option<&'a dyn crate::dest::DestinationDisplay>,
 }
 
 fn general_card(view: &View<'_>) -> Paragraph<'static> {
@@ -128,6 +129,10 @@ pub(super) fn settings_height(view: &View<'_>, width: u16) -> usize {
         + 2 // OK and tip bar.
 }
 
+pub(super) fn display_height(view: &View<'_>, width: u16) -> usize {
+    crate::tmux::PANEL_HEIGHT + view.display_ui.map_or(0, |ui| ui.height(width) as usize)
+}
+
 fn cost_line(cost: &crate::cost::CostDisplay, label: Option<&str>) -> Line<'static> {
     let mut spans = Vec::new();
     if let Some(label) = label {
@@ -204,6 +209,14 @@ pub(super) fn render(frame: &mut Frame, view: &View<'_>) -> Rect {
         );
         button_area = button;
     } else {
+        let [content, destination_area] = Layout::vertical([
+            Constraint::Min(0),
+            Constraint::Length(view.display_ui.map_or(0, |ui| ui.height(content.width))),
+        ])
+        .areas(content);
+        if let Some(ui) = view.display_ui {
+            ui.render(frame, destination_area);
+        }
         let session = clean(&view.session.to_string());
         let monitoring = clean(&view.monitoring.to_string());
         let detail = clean(view.detail);
@@ -316,6 +329,15 @@ mod tests {
         }
     }
 
+    impl crate::dest::DestinationDisplay for TestSettings {
+        fn height(&self, _width: u16) -> u16 {
+            2
+        }
+        fn render(&self, frame: &mut Frame<'_>, area: Rect) {
+            frame.render_widget(Paragraph::new("Destination-owned status"), area);
+        }
+    }
+
     #[test]
     fn settings_show_destination_content_only_when_recognized() {
         for destination in [Some("Configured destination"), None] {
@@ -334,6 +356,7 @@ mod tests {
                 billing_currency: destination.map(|_| "USD"),
                 conversion: &conversion,
                 settings_ui,
+                display_ui: None,
             };
             let height = settings_height(&view, 100) as u16;
             let mut terminal = Terminal::new(TestBackend::new(100, height)).unwrap();
@@ -368,36 +391,39 @@ mod tests {
     fn modes_and_tip_bar_render_at_different_sizes() {
         for width in [1, 20, 100, 200] {
             let conversion = crate::exchange::ConversionDisplay::default();
-            let mut terminal = Terminal::new(TestBackend::new(width, 4)).unwrap();
             for settings in [false, true] {
+                let ui = TestSettings;
+                let view = View {
+                    session: &CostDisplay {
+                        amount: Some("$10 USD".into()),
+                        status: CostStatus::Connected,
+                        ..Default::default()
+                    },
+                    monitoring: &CostDisplay {
+                        amount: Some("$2 USD".into()),
+                        status: CostStatus::Connected,
+                        ..Default::default()
+                    },
+                    detail: "Connected",
+                    detail_warning: false,
+                    settings,
+                    focused: true,
+                    api_url: "https://example.com/v1",
+                    destination: None,
+                    billing_currency: None,
+                    conversion: &conversion,
+                    settings_ui: None,
+                    display_ui: Some(&ui),
+                };
+                let height = if settings {
+                    settings_height(&view, width)
+                } else {
+                    display_height(&view, width)
+                } as u16;
+                let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
                 let mut button = Rect::default();
                 terminal
-                    .draw(|frame| {
-                        button = render(
-                            frame,
-                            &View {
-                                session: &CostDisplay {
-                                    amount: Some("$10 USD".into()),
-                                    status: CostStatus::Connected,
-                                    ..Default::default()
-                                },
-                                monitoring: &CostDisplay {
-                                    amount: Some("$2 USD".into()),
-                                    status: CostStatus::Connected,
-                                    ..Default::default()
-                                },
-                                detail: "Connected",
-                                detail_warning: false,
-                                settings,
-                                focused: true,
-                                api_url: "https://example.com/v1",
-                                destination: None,
-                                billing_currency: None,
-                                conversion: &conversion,
-                                settings_ui: None,
-                            },
-                        )
-                    })
+                    .draw(|frame| button = render(frame, &view))
                     .unwrap();
                 let buffer = terminal.backend().buffer();
                 if width >= 100 {
@@ -408,10 +434,12 @@ mod tests {
                         assert_eq!(button.x, (width - button.width) / 2);
                         assert!(!text.contains("Session"));
                         assert!(hit(button, button.x, button.y));
-                        assert!(!hit(button, button.x, 3));
+                        assert!(!hit(button, button.x, height - 1));
+                        assert!(!text.contains("Destination-owned status"));
                     } else {
                         assert!(text.contains("Session total"));
                         assert!(text.contains("[ Open Settings ]"));
+                        assert!(text.contains("Destination-owned status"));
                     }
                 }
             }
@@ -420,19 +448,15 @@ mod tests {
 
     #[test]
     fn settings_show_configured_source_and_current_or_unavailable_rate() {
-        let source = crate::conversion::config::parse(
-            &"currency='EUR'\nmultiplier=2.0\n[source]\ntype='value'\nvalue=0.14"
-                .parse()
-                .unwrap(),
-            true,
-        )
-        .unwrap();
-        let exchange = crate::exchange::Exchange::new(source).unwrap();
+        let payment = crate::dest::PaymentInfo {
+            payment_currency: "EUR".into(),
+            exchange_rate: 0.28,
+        };
         for (payment, status, warning) in [
-            (exchange.payment.clone(), "Ready", false),
+            (Some(payment.clone()), "Ready", false),
             (None, "Payment conversion unavailable: network error", true),
             (
-                exchange.payment.clone(),
+                Some(payment.clone()),
                 "Payment conversion uses last known rate (stale): network error",
                 true,
             ),
@@ -441,7 +465,15 @@ mod tests {
                 payment,
                 status: status.into(),
                 warning,
-                ..exchange.display()
+                configured: true,
+                settings: Some(crate::conversion::ConversionSettings {
+                    currency: "EUR".into(),
+                    multiplier: 2.0,
+                    source: Some(crate::conversion::SourceDescription {
+                        name: "Test source".into(),
+                        fields: vec![("Label".into(), "source detail".into())],
+                    }),
+                }),
             };
             let view = View {
                 session: &CostDisplay::default(),
@@ -455,6 +487,7 @@ mod tests {
                 billing_currency: Some("USD"),
                 conversion: &conversion,
                 settings_ui: None,
+                display_ui: None,
             };
             for width in [40, 100] {
                 let mut terminal = Terminal::new(TestBackend::new(
@@ -491,8 +524,8 @@ mod tests {
                         cell_for(status).fg,
                         if warning { Color::Yellow } else { Color::Reset }
                     );
-                    assert_eq!(cell_for("Fixed value").fg, Color::Blue);
-                    assert_eq!(cell_for("Value: 0.14").fg, Color::Reset);
+                    assert_eq!(cell_for("Test source").fg, Color::Blue);
+                    assert_eq!(cell_for("Label: source detail").fg, Color::Reset);
                     assert_eq!(cell_for("Conversion Info").fg, Color::Blue);
                 }
                 let text: String = buffer
@@ -510,8 +543,8 @@ mod tests {
                     "Billing currency: USD",
                     "Payment currency: EUR",
                     "Multiplier: 2",
-                    "Source: Fixed value",
-                    "Value: 0.14",
+                    "Source: Test source",
+                    "Label: source detail",
                     "[ OK ]",
                     "Enter: OK    Esc: Back",
                     status,
@@ -538,6 +571,7 @@ mod tests {
             CostStatus::Reconnecting,
             CostStatus::Connecting,
             CostStatus::Unavailable,
+            CostStatus::NotAvailable,
         ] {
             let has_amount = matches!(status, CostStatus::Connected | CostStatus::Reconnecting);
             let session = CostDisplay {
@@ -567,6 +601,7 @@ mod tests {
                 billing_currency: Some("USD"),
                 conversion: &crate::exchange::ConversionDisplay::default(),
                 settings_ui: None,
+                display_ui: None,
             };
             for width in [100, 200] {
                 let mut terminal = Terminal::new(TestBackend::new(width, 4)).unwrap();

@@ -1,4 +1,4 @@
-use crate::dest::TokenUsage;
+use crate::dest::{TokenRequest, TokenUsage};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -17,6 +17,9 @@ pub struct Session {
     pub model: Option<String>,
     #[serde(default)]
     pub token_usage: Option<TokenUsage>,
+    /// Transient response snapshots for the monitoring run; no historical session prices.
+    #[serde(default)]
+    pub requests: Vec<TokenRequest>,
     pub error: Option<String>,
 }
 
@@ -52,6 +55,12 @@ fn parse_usage(value: &Value) -> Option<TokenUsage> {
     })
 }
 
+#[derive(Clone)]
+struct ThreadContext {
+    model: Option<String>,
+    credential_profile: Option<String>,
+}
+
 #[derive(Default)]
 pub struct Tracker {
     pub current: Session,
@@ -61,6 +70,10 @@ pub struct Tracker {
     selected_sequence: u64,
     reads: HashMap<(u64, String), String>,
     last_usage: HashMap<String, Value>,
+    monitored_threads: HashMap<String, ThreadContext>,
+    request_sequence: u64,
+    turn_models: HashMap<(String, String), Option<String>>,
+    pending_turns: HashMap<(u64, String), (String, Option<String>)>,
     completed_turns: std::collections::HashSet<(String, String)>,
 }
 
@@ -96,6 +109,8 @@ impl Tracker {
     pub fn disconnected(&mut self, connection: u64) {
         self.selections.retain(|(owner, _), _| *owner != connection);
         self.reads.retain(|(owner, _), _| *owner != connection);
+        self.pending_turns
+            .retain(|(owner, _), _| *owner != connection);
     }
 
     pub fn request(&mut self, connection: u64, message: &Value) {
@@ -105,6 +120,21 @@ impl Tracker {
             self.selections
                 .insert(id_key(connection, id), self.sequence);
             return;
+        }
+        if message.get("method").and_then(Value::as_str) == Some("turn/start")
+            && let Some(thread_id) = message.pointer("/params/threadId").and_then(Value::as_str)
+        {
+            let model = message
+                .pointer("/params/model")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+                .or_else(|| {
+                    self.monitored_threads
+                        .get(thread_id)
+                        .and_then(|context| context.model.clone())
+                });
+            self.pending_turns
+                .insert(id_key(connection, id), (thread_id.to_owned(), model));
         }
         if let Some("thread/read") = message.get("method").and_then(Value::as_str)
             && let Some(thread_id) = message.pointer("/params/threadId").and_then(Value::as_str)
@@ -138,6 +168,18 @@ impl Tracker {
     pub fn response(&mut self, connection: u64, message: &Value) {
         if let Some(id) = message.get("id") {
             let key = id_key(connection, id);
+            if let Some((thread_id, model)) = self.pending_turns.remove(&key)
+                && let Some(turn_id) = message.pointer("/result/turn/id").and_then(Value::as_str)
+            {
+                self.turn_models
+                    .insert((thread_id.clone(), turn_id.to_owned()), model.clone());
+                if let Some(context) = self.monitored_threads.get_mut(&thread_id) {
+                    context.model = model.clone();
+                }
+                if self.current.thread_id.as_deref() == Some(&thread_id) {
+                    self.current.model = model;
+                }
+            }
             if let Some(sequence) = self.selections.remove(&key)
                 && let Some(thread) = message.pointer("/result/thread")
                 && sequence >= self.selected_sequence
@@ -154,6 +196,13 @@ impl Tracker {
                     .and_then(Value::as_str)
                     .or_else(|| thread.get("model").and_then(Value::as_str))
                     .map(str::to_owned);
+                self.monitored_threads.insert(
+                    thread_id.to_owned(),
+                    ThreadContext {
+                        model: self.current.model.clone(),
+                        credential_profile: self.current.model_provider.clone(),
+                    },
+                );
                 self.current.token_usage = self.last_usage.get(thread_id).and_then(parse_usage);
             }
             if let Some(requested) = self.reads.remove(&key)
@@ -175,14 +224,47 @@ impl Tracker {
         }
         let thread_id = message.pointer("/params/threadId").and_then(Value::as_str);
         if let Some(thread_id) = thread_id
-            && Some(thread_id) == self.current.thread_id.as_deref()
+            && let Some(context) = self.monitored_threads.get(thread_id).cloned()
         {
             match message.get("method").and_then(Value::as_str) {
                 Some("thread/tokenUsage/updated") => {
                     if let Some(usage) = message.pointer("/params/tokenUsage/total")
                         && self.last_usage.get(thread_id) != Some(usage)
                     {
-                        self.current.token_usage = parse_usage(usage);
+                        let total = parse_usage(usage);
+                        if self.current.thread_id.as_deref() == Some(thread_id) {
+                            self.current.token_usage = total.clone();
+                        }
+                        if total.as_ref().is_some_and(|usage| usage.validate().is_ok()) {
+                            let previous = self.last_usage.get(thread_id).and_then(parse_usage);
+                            // Prefer the response's own usage. A known previous total is a safe fallback.
+                            let request_usage = message
+                                .pointer("/params/tokenUsage/last")
+                                .and_then(parse_usage)
+                                .or_else(|| total.as_ref()?.delta_from(previous.as_ref()?).ok());
+                            if let Some(usage) = request_usage {
+                                self.request_sequence += 1;
+                                let model = message
+                                    .pointer("/params/turnId")
+                                    .and_then(Value::as_str)
+                                    .map(|turn| {
+                                        self.turn_models
+                                            .entry((thread_id.to_owned(), turn.to_owned()))
+                                            .or_insert_with(|| context.model.clone())
+                                            .clone()
+                                    })
+                                    .unwrap_or_else(|| context.model.clone());
+                                self.current.requests.push(TokenRequest {
+                                    sequence: self.request_sequence,
+                                    session_id: thread_id.to_owned(),
+                                    credential_profile: context.credential_profile,
+                                    model,
+                                    usage,
+                                });
+                            } else {
+                                self.current.error = Some("Per-request token usage unavailable; response was not estimated".into());
+                            }
+                        }
                         self.last_usage.insert(thread_id.to_owned(), usage.clone());
                         self.current.cost_revision += 1;
                     }
@@ -210,43 +292,89 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn codex_usage_and_model_are_normalized_for_the_billing_host() {
+    fn responses_capture_their_own_usage_and_model_without_repricing_history() {
         let mut tracker = Tracker::default();
         tracker.request(1, &json!({"id":1,"method":"thread/resume"}));
-        tracker.response(1, &json!({"id":1,"result":{"model":"test-model", "thread":{"id":"chat","modelProvider":"relay"}}}));
-        assert_eq!(tracker.current.model.as_deref(), Some("test-model"));
-        let notification = json!({"method":"thread/tokenUsage/updated","params":{"threadId":"chat", "turnId":"t",
-            "tokenUsage":{"total":{"inputTokens":100,"cachedInputTokens":20,"outputTokens":30,"reasoningOutputTokens":10}}}});
-        tracker.response(1, &notification);
+        tracker.response(1, &json!({"id":1,"result":{"model":"model-a", "thread":{"id":"chat","modelProvider":"relay"}}}));
+        let event = |turn: &str, total: u64, last: u64| {
+            json!({
+            "method":"thread/tokenUsage/updated","params":{"threadId":"chat", "turnId":turn,
+            "tokenUsage":{"total":{"inputTokens":total,"cachedInputTokens":0,"outputTokens":0,"reasoningOutputTokens":0},
+            "last":{"inputTokens":last,"cachedInputTokens":0,"outputTokens":0,"reasoningOutputTokens":0}}}})
+        };
+        let first = event("a", 10_000, 100);
+        tracker.response(1, &first);
+        tracker.response(2, &first);
+        assert_eq!(tracker.current.requests.len(), 1);
+        assert_eq!(tracker.current.requests[0].usage.input_tokens, 100);
+        tracker.request(
+            1,
+            &json!({"id":2,"method":"turn/start","params":{"threadId":"chat","model":"model-b"}}),
+        );
+        tracker.response(1, &json!({"id":2,"result":{"turn":{"id":"b"}}}));
+        tracker.response(1, &event("b", 10_200, 200));
+        tracker.response(1, &event("b", 10_500, 300));
+        // A delayed response from the earlier turn retains its original model.
+        tracker.response(1, &event("a", 10_550, 50));
+        let requests = &tracker.current.requests;
+        assert_eq!(requests.len(), 4);
         assert_eq!(
-            tracker.current.token_usage,
-            Some(TokenUsage {
-                input_tokens: 100,
-                cached_input_tokens: 20,
-                output_tokens: 30,
-                reasoning_output_tokens: 10,
-                ..Default::default()
-            })
+            requests
+                .iter()
+                .map(|r| r.model.as_deref())
+                .collect::<Vec<_>>(),
+            vec![
+                Some("model-a"),
+                Some("model-b"),
+                Some("model-b"),
+                Some("model-a")
+            ]
+        );
+        assert_eq!(
+            requests
+                .iter()
+                .map(|r| r.usage.input_tokens)
+                .collect::<Vec<_>>(),
+            vec![100, 200, 300, 50]
+        );
+        assert!(
+            requests
+                .iter()
+                .all(|r| r.credential_profile.as_deref() == Some("relay"))
         );
         let encoded = serde_json::to_vec(&tracker.current).unwrap();
         assert_eq!(
             serde_json::from_slice::<Session>(&encoded).unwrap(),
             tracker.current
         );
-        tracker.request(1, &json!({"id":2,"method":"thread/start"}));
+
+        tracker.request(1, &json!({"id":3,"method":"thread/start"}));
         tracker.response(
             1,
-            &json!({"id":2,"result":{"model":"other-model","thread":{"id":"new"}}}),
+            &json!({"id":3,"result":{"model":"model-c","thread":{"id":"new"}}}),
         );
         assert!(tracker.current.token_usage.is_none());
-        tracker.request(1, &json!({"id":3,"method":"thread/resume"}));
-        tracker.response(
-            1,
-            &json!({"id":3,"result":{"model":"test-model","thread":{"id":"chat"}}}),
-        );
+        tracker.response(1, &event("a", 10_600, 50));
         assert_eq!(
-            tracker.current.token_usage.as_ref().unwrap().input_tokens,
-            100
+            tracker.current.requests.last().unwrap().model.as_deref(),
+            Some("model-a")
+        );
+        assert!(tracker.current.token_usage.is_none());
+        let mut without_last = event("c", 50_000, 500);
+        without_last["params"]["threadId"] = json!("new");
+        without_last["params"]["tokenUsage"]
+            .as_object_mut()
+            .unwrap()
+            .remove("last");
+        tracker.response(1, &without_last);
+        assert_eq!(tracker.current.requests.len(), 5);
+        assert!(
+            tracker
+                .current
+                .error
+                .as_deref()
+                .unwrap()
+                .contains("not estimated")
         );
     }
 

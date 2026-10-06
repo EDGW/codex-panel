@@ -1,10 +1,12 @@
 //! Destination contracts; billing and settings capabilities have separate interfaces.
+pub mod builtins;
 pub mod claude_code_hub;
+pub mod models_dev;
 pub mod registry;
 
 use serde::{Deserialize, Serialize};
 
-pub type Result<T> = std::result::Result<T, String>;
+pub use crate::Result;
 
 /// A credential resolver supplied by the host; destinations never read Codex files.
 pub trait Credentials: Send + Sync {
@@ -20,7 +22,8 @@ pub struct SessionContext {
 #[derive(Clone, Debug, PartialEq)]
 pub struct DestinationConfig {
     pub name: String,
-    pub billing_currency: String,
+    /// Fixed billing currency for session totals, or None when token quotes supply it.
+    pub billing_currency: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -44,7 +47,7 @@ impl PaymentInfo {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Stats {
-    /// Amount in `DestinationConfig::billing_currency`, with all provider multipliers applied.
+    /// Billed amount in the session currency or the enclosing token quote's currency.
     pub amount: f64,
     /// None when the source cannot report a reliable request count (e.g. token telemetry).
     pub requests: Option<u64>,
@@ -60,13 +63,28 @@ impl Stats {
 }
 
 pub trait Destination: Send + Sync {
-    /// Name and billing currency must remain stable throughout a monitoring run.
+    /// Session billing uses this currency; token quotes carry their own currency.
     fn config(&self) -> DestinationConfig;
     fn pricing(&self) -> PricingInterface<'_>;
 
     fn settings(&self) -> Option<std::sync::Arc<dyn DestinationSettings>> {
         None
     }
+
+    fn display(&self, _context: &DisplayContext) -> Option<std::sync::Arc<dyn DestinationDisplay>> {
+        None
+    }
+}
+
+pub struct DisplayContext {
+    pub session: Option<SessionContext>,
+    pub model: Option<String>,
+}
+
+/// Optional monitor content; the host allocates space without understanding provider state.
+pub trait DestinationDisplay: Send + Sync {
+    fn height(&self, width: u16) -> u16;
+    fn render(&self, frame: &mut ratatui::Frame<'_>, area: ratatui::layout::Rect);
 }
 
 /// The host supplies an area; the destination owns its widgets, layout and input.
@@ -92,9 +110,25 @@ pub trait SessionPricing: Send + Sync {
 }
 
 pub trait TokenPricing: Send + Sync {
-    /// Effective rates in billing currency per million tokens, for this exact model.
+    /// Effective rates and their currency per million tokens, for this exact model.
     /// Return an error for an unknown model; never silently use another model's rates.
-    fn token_prices(&self, context: &SessionContext, model: &str) -> Result<TokenPrices>;
+    fn token_prices(&self, context: Option<&SessionContext>, model: &str) -> Result<TokenQuote>;
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TokenQuote {
+    pub currency: String,
+    pub prices: TokenPrices,
+}
+
+/// One observed model response. Sequence numbers are local to the monitoring run.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TokenRequest {
+    pub sequence: u64,
+    pub session_id: String,
+    pub credential_profile: Option<String>,
+    pub model: Option<String>,
+    pub usage: TokenUsage,
 }
 
 /// Cumulative telemetry. Cached/write input are subsets of input; reasoning is a subset of output.

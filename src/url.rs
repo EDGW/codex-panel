@@ -1,5 +1,5 @@
 //! Shared HTTP URL syntax validation, separate from routing and retrieval.
-use crate::dest::Result;
+use crate::Result;
 use reqwest::Url;
 
 /// Retrieval URLs may contain a query; routes and protocol origins may not.

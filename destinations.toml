@@ -43,3 +43,2784 @@ url = "https://topup3.caaa.tech/api/topup/config"
 pointer = "/data/priceCnyPerUsd"
 cache_seconds = 300
 timeout_seconds = 10
+
+# Provider names, IDs and published endpoints fetched from https://models.dev/api.json?type=all
+# Generated at 2026-10-06T15:05:18+00:00
+# Legacy concrete URLs are retained as explicit aliases where a matching provider exists.
+# Disabled entries need an account-specific URL, a local URL, an unpublished endpoint,
+# or explicit selection because another provider shares the same endpoint.
+# Prices are fetched at runtime in USD; conversion is configured separately.
+# Runway and SambaNova are absent from this source and have no default price destination.
+
+[[destinations]]
+id = "302ai"
+type = "models_dev"
+name = "302.AI"
+api_urls = ["https://api.302.ai/v1"]
+
+[destinations.config]
+provider_id = "302ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "abacus"
+type = "models_dev"
+name = "Abacus"
+api_urls = ["https://routellm.abacus.ai/v1"]
+
+[destinations.config]
+provider_id = "abacus"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "abliteration-ai"
+type = "models_dev"
+name = "abliteration.ai"
+api_urls = ["https://api.abliteration.ai/v1"]
+
+[destinations.config]
+provider_id = "abliteration-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "above"
+type = "models_dev"
+name = "above.dev"
+api_urls = ["https://api.above.dev/v1"]
+
+[destinations.config]
+provider_id = "above"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "agentrouter"
+type = "models_dev"
+name = "AgentRouter"
+api_urls = ["https://agentrouter.org/v1"]
+
+[destinations.config]
+provider_id = "agentrouter"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "agnes"
+type = "models_dev"
+name = "Agnes AI"
+api_urls = ["https://apihub.agnes-ai.com/v1"]
+
+[destinations.config]
+provider_id = "agnes"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "ai-router"
+type = "models_dev"
+name = "AI-ROUTER"
+api_urls = ["https://api.ai-router.dev/v1"]
+
+[destinations.config]
+provider_id = "ai-router"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "ai21"
+type = "models_dev"
+name = "AI21 Labs"
+api_urls = ["https://api.ai21.com/studio/v1"]
+
+[destinations.config]
+provider_id = "ai21"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "aiand"
+type = "models_dev"
+name = "ai&"
+api_urls = ["https://api.aiand.com/v1"]
+
+[destinations.config]
+provider_id = "aiand"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "aihubmix"
+type = "models_dev"
+name = "AIHubMix"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "aihubmix"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "ainetcafe"
+type = "models_dev"
+name = "ainetcafe"
+api_urls = ["https://microquickjs.com/v1"]
+
+[destinations.config]
+provider_id = "ainetcafe"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "aixy"
+type = "models_dev"
+name = "Aixy"
+api_urls = ["https://api.aixy-gateway.com/v1"]
+
+[destinations.config]
+provider_id = "aixy"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "aki-io"
+type = "models_dev"
+name = "AKI.IO"
+api_urls = ["https://aki.io/v1"]
+
+[destinations.config]
+provider_id = "aki-io"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "alibaba"
+type = "models_dev"
+name = "Alibaba"
+api_urls = ["https://dashscope-intl.aliyuncs.com/compatible-mode/v1"]
+
+[destinations.config]
+provider_id = "alibaba"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "alibaba-cn"
+type = "models_dev"
+name = "Alibaba (China)"
+api_urls = ["https://dashscope.aliyuncs.com/compatible-mode/v1"]
+
+[destinations.config]
+provider_id = "alibaba-cn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "alibaba-coding-plan"
+type = "models_dev"
+name = "Alibaba Coding Plan"
+api_urls = ["https://coding-intl.dashscope.aliyuncs.com/v1"]
+
+[destinations.config]
+provider_id = "alibaba-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "alibaba-coding-plan-cn"
+type = "models_dev"
+name = "Alibaba Coding Plan (China)"
+api_urls = ["https://coding.dashscope.aliyuncs.com/v1"]
+
+[destinations.config]
+provider_id = "alibaba-coding-plan-cn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "alibaba-token-plan"
+type = "models_dev"
+name = "Alibaba Token Plan"
+api_urls = ["https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"]
+
+[destinations.config]
+provider_id = "alibaba-token-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "alibaba-token-plan-cn"
+type = "models_dev"
+name = "Alibaba Token Plan (China)"
+api_urls = ["https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"]
+
+[destinations.config]
+provider_id = "alibaba-token-plan-cn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "amazon-bedrock"
+type = "models_dev"
+name = "Amazon Bedrock"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "amazon-bedrock"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "ambient"
+type = "models_dev"
+name = "Ambient"
+api_urls = ["https://api.ambient.xyz/v1"]
+
+[destinations.config]
+provider_id = "ambient"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "amd"
+type = "models_dev"
+name = "AMD"
+api_urls = ["https://developer.amd.com.cn/radeon/api/v1"]
+
+[destinations.config]
+provider_id = "amd"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "anthropic"
+type = "models_dev"
+name = "Anthropic"
+api_urls = ["https://api.anthropic.com"]
+
+[destinations.config]
+provider_id = "anthropic"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "anyapi"
+type = "models_dev"
+name = "AnyAPI"
+api_urls = ["https://api.anyapi.ai/v1"]
+
+[destinations.config]
+provider_id = "anyapi"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "arcee"
+type = "models_dev"
+name = "Arcee"
+api_urls = ["https://api.arcee.ai/api/v1"]
+
+[destinations.config]
+provider_id = "arcee"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "atomic-chat"
+type = "models_dev"
+name = "Atomic Chat"
+# Published endpoint requires local or account-specific configuration: http://127.0.0.1:1337/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "atomic-chat"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "auriko"
+type = "models_dev"
+name = "Auriko"
+api_urls = ["https://api.auriko.ai/v1"]
+
+[destinations.config]
+provider_id = "auriko"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "azure"
+type = "models_dev"
+name = "Azure"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "azure"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "azure-cognitive-services"
+type = "models_dev"
+name = "Azure Cognitive Services"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "azure-cognitive-services"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "bailing"
+type = "models_dev"
+name = "Bailing"
+api_urls = ["https://api.tbox.cn/api/llm/v1"]
+
+[destinations.config]
+provider_id = "bailing"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "baseten"
+type = "models_dev"
+name = "Baseten"
+api_urls = ["https://inference.baseten.co/v1"]
+
+[destinations.config]
+provider_id = "baseten"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "bee"
+type = "models_dev"
+name = "Bee by HEOSSI"
+api_urls = ["https://api.bee.heossi.com/bee"]
+
+[destinations.config]
+provider_id = "bee"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "berget"
+type = "models_dev"
+name = "Berget.AI"
+api_urls = ["https://api.berget.ai/v1"]
+
+[destinations.config]
+provider_id = "berget"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "blueclaw"
+type = "models_dev"
+name = "Blue Claw"
+api_urls = ["https://openai.blueclaw.network/v1"]
+
+[destinations.config]
+provider_id = "blueclaw"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "bothub"
+type = "models_dev"
+name = "Bothub"
+api_urls = ["https://openai.bothub.ru/v1"]
+
+[destinations.config]
+provider_id = "bothub"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "cerebras"
+type = "models_dev"
+name = "Cerebras"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "cerebras"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "chutes"
+type = "models_dev"
+name = "Chutes"
+api_urls = ["https://llm.chutes.ai/v1"]
+
+[destinations.config]
+provider_id = "chutes"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "clarifai"
+type = "models_dev"
+name = "Clarifai"
+api_urls = ["https://api.clarifai.com/v2/ext/openai/v1"]
+
+[destinations.config]
+provider_id = "clarifai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "claudinio"
+type = "models_dev"
+name = "Claudinio"
+api_urls = ["https://api.claudin.io/v1"]
+
+[destinations.config]
+provider_id = "claudinio"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "cline-pass"
+type = "models_dev"
+name = "ClinePass"
+api_urls = ["https://api.cline.bot/api/v1"]
+
+[destinations.config]
+provider_id = "cline-pass"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "cloudferro-sherlock"
+type = "models_dev"
+name = "CloudFerro Sherlock"
+api_urls = ["https://api-sherlock.cloudferro.com/openai/v1"]
+
+[destinations.config]
+provider_id = "cloudferro-sherlock"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "cloudflare-ai-gateway"
+type = "models_dev"
+name = "Cloudflare AI Gateway"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "cloudflare-ai-gateway"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "cloudflare-workers-ai"
+type = "models_dev"
+name = "Cloudflare Workers AI"
+# Published endpoint requires local or account-specific configuration: https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "cloudflare-workers-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "cohere"
+type = "models_dev"
+name = "Cohere"
+api_urls = ["https://api.cohere.com"]
+
+[destinations.config]
+provider_id = "cohere"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "coralbricks"
+type = "models_dev"
+name = "CoralBricks"
+api_urls = ["https://inference.coralbricks.ai/v1"]
+
+[destinations.config]
+provider_id = "coralbricks"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "cortecs"
+type = "models_dev"
+name = "Cortecs"
+api_urls = ["https://api.cortecs.ai/v1"]
+
+[destinations.config]
+provider_id = "cortecs"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "crof"
+type = "models_dev"
+name = "CrofAI"
+api_urls = ["https://crof.ai/v1"]
+
+[destinations.config]
+provider_id = "crof"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "crossmodel"
+type = "models_dev"
+name = "CrossModel"
+api_urls = ["https://api.crossmodel.ai/v1"]
+
+[destinations.config]
+provider_id = "crossmodel"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "crusoe"
+type = "models_dev"
+name = "Crusoe"
+api_urls = ["https://api.inference.crusoecloud.com/v1"]
+
+[destinations.config]
+provider_id = "crusoe"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "daoxe"
+type = "models_dev"
+name = "DaoXE"
+api_urls = ["https://daoxe.com/v1"]
+
+[destinations.config]
+provider_id = "daoxe"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "databricks"
+type = "models_dev"
+name = "Databricks"
+# Published endpoint requires local or account-specific configuration: https://${DATABRICKS_HOST}/ai-gateway/mlflow/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "databricks"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "deepinfra"
+type = "models_dev"
+name = "Deep Infra"
+api_urls = ["https://api.deepinfra.com/v1/openai"]
+
+[destinations.config]
+provider_id = "deepinfra"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "deepseek"
+type = "models_dev"
+name = "DeepSeek"
+api_urls = ["https://api.deepseek.com"]
+
+[destinations.config]
+provider_id = "deepseek"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+note = "Only off-peak prices are shown; estimated costs may be lower than actual charges."
+
+[[destinations]]
+id = "digitalocean"
+type = "models_dev"
+name = "DigitalOcean"
+api_urls = ["https://inference.do-ai.run/v1"]
+
+[destinations.config]
+provider_id = "digitalocean"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "dinference"
+type = "models_dev"
+name = "DInference"
+api_urls = ["https://api.dinference.com/v1"]
+
+[destinations.config]
+provider_id = "dinference"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "drun"
+type = "models_dev"
+name = "D.Run (China)"
+api_urls = ["https://chat.d.run/v1"]
+
+[destinations.config]
+provider_id = "drun"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "ebcloud"
+type = "models_dev"
+name = "EBCloud"
+api_urls = ["https://maas-api.ebcloud.com/v1"]
+
+[destinations.config]
+provider_id = "ebcloud"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "echo"
+type = "models_dev"
+name = "Echo"
+api_urls = ["https://echo.tracerml.ai/v1"]
+
+[destinations.config]
+provider_id = "echo"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "edenai"
+type = "models_dev"
+name = "Eden AI"
+api_urls = ["https://api.edenai.run/v3"]
+
+[destinations.config]
+provider_id = "edenai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "empiriolabs"
+type = "models_dev"
+name = "EmpirioLabs AI"
+api_urls = ["https://api.empiriolabs.ai/v1"]
+
+[destinations.config]
+provider_id = "empiriolabs"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "engy"
+type = "models_dev"
+name = "engy"
+api_urls = ["https://api.engy.ai/v1"]
+
+[destinations.config]
+provider_id = "engy"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "evroc"
+type = "models_dev"
+name = "evroc"
+api_urls = ["https://models.think.evroc.com/v1"]
+
+[destinations.config]
+provider_id = "evroc"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "fastrouter"
+type = "models_dev"
+name = "FastRouter"
+api_urls = ["https://go.fastrouter.ai/api/v1"]
+
+[destinations.config]
+provider_id = "fastrouter"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "fireworks-ai"
+type = "models_dev"
+name = "Fireworks AI"
+api_urls = ["https://api.fireworks.ai/inference/v1"]
+
+[destinations.config]
+provider_id = "fireworks-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "freemodel"
+type = "models_dev"
+name = "FreeModel"
+api_urls = ["https://cc.freemodel.dev/v1"]
+
+[destinations.config]
+provider_id = "freemodel"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "friendli"
+type = "models_dev"
+name = "Friendli"
+api_urls = ["https://api.friendli.ai/serverless/v1"]
+
+[destinations.config]
+provider_id = "friendli"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "frogbot"
+type = "models_dev"
+name = "FrogBot"
+api_urls = ["https://app.frogbot.ai/api/v1"]
+
+[destinations.config]
+provider_id = "frogbot"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "github-copilot"
+type = "models_dev"
+name = "GitHub Copilot"
+api_urls = ["https://api.githubcopilot.com"]
+
+[destinations.config]
+provider_id = "github-copilot"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "gitlab"
+type = "models_dev"
+name = "GitLab Duo"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "gitlab"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "gmicloud"
+type = "models_dev"
+name = "GMI Cloud"
+api_urls = ["https://api.gmi-serving.com/v1"]
+
+[destinations.config]
+provider_id = "gmicloud"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "google"
+type = "models_dev"
+name = "Google"
+api_urls = ["https://generativelanguage.googleapis.com/v1beta"]
+
+[destinations.config]
+provider_id = "google"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "google-vertex"
+type = "models_dev"
+name = "Vertex"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "google-vertex"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "google-vertex-anthropic"
+type = "models_dev"
+name = "Vertex (Anthropic)"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "google-vertex-anthropic"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "greenpt"
+type = "models_dev"
+name = "GreenPT"
+api_urls = ["https://api.greenpt.ai/v1"]
+
+[destinations.config]
+provider_id = "greenpt"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "groq"
+type = "models_dev"
+name = "Groq"
+api_urls = ["https://api.groq.com/openai/v1"]
+
+[destinations.config]
+provider_id = "groq"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "helicone"
+type = "models_dev"
+name = "Helicone"
+api_urls = ["https://ai-gateway.helicone.ai/v1"]
+
+[destinations.config]
+provider_id = "helicone"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "hetzner"
+type = "models_dev"
+name = "Hetzner"
+api_urls = ["https://inference.hetzner.com/api/v1"]
+
+[destinations.config]
+provider_id = "hetzner"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "hpc-ai"
+type = "models_dev"
+name = "HPC-AI"
+api_urls = ["https://api.hpc-ai.com/inference/v1"]
+
+[destinations.config]
+provider_id = "hpc-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "huggingface"
+type = "models_dev"
+name = "Hugging Face"
+api_urls = ["https://router.huggingface.co/v1"]
+
+[destinations.config]
+provider_id = "huggingface"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "hyper"
+type = "models_dev"
+name = "Charm Hyper"
+api_urls = ["https://hyper.charm.land/v1"]
+
+[destinations.config]
+provider_id = "hyper"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "iflowcn"
+type = "models_dev"
+name = "iFlow"
+api_urls = ["https://apis.iflow.cn/v1"]
+
+[destinations.config]
+provider_id = "iflowcn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "impossibl"
+type = "models_dev"
+name = "Impossibl"
+api_urls = ["https://api.impossibl.com/v1"]
+
+[destinations.config]
+provider_id = "impossibl"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "inception"
+type = "models_dev"
+name = "Inception"
+api_urls = ["https://api.inceptionlabs.ai/v1"]
+
+[destinations.config]
+provider_id = "inception"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "inceptron"
+type = "models_dev"
+name = "Inceptron"
+api_urls = ["https://api.inceptron.io/v1"]
+
+[destinations.config]
+provider_id = "inceptron"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "inco"
+type = "models_dev"
+name = "Inco"
+api_urls = ["https://api.inco.ai/v1"]
+
+[destinations.config]
+provider_id = "inco"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "infer"
+type = "models_dev"
+name = "Infer by Flow7"
+api_urls = ["https://infer.flow7.org/v1"]
+
+[destinations.config]
+provider_id = "infer"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "inference"
+type = "models_dev"
+name = "Inference"
+api_urls = ["https://inference.net/v1"]
+
+[destinations.config]
+provider_id = "inference"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "inferx"
+type = "models_dev"
+name = "InferX"
+api_urls = ["https://model.inferx.net/endpoints/v1"]
+
+[destinations.config]
+provider_id = "inferx"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "infomaniak"
+type = "models_dev"
+name = "Infomaniak"
+# Published endpoint requires local or account-specific configuration: https://api.infomaniak.com/2/ai/${INFOMANIAK_PRODUCT_ID}/openai/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "infomaniak"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "io-net"
+type = "models_dev"
+name = "IO.NET"
+api_urls = ["https://api.intelligence.io.solutions/api/v1"]
+
+[destinations.config]
+provider_id = "io-net"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "iteracompute"
+type = "models_dev"
+name = "IteraCompute"
+api_urls = ["https://api.iteracompute.com/v1"]
+
+[destinations.config]
+provider_id = "iteracompute"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "jalapeno"
+type = "models_dev"
+name = "Jalapeno Cloud"
+api_urls = ["https://api.jalapeno-cloud.ai/v1"]
+
+[destinations.config]
+provider_id = "jalapeno"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "jiekou"
+type = "models_dev"
+name = "Jiekou.AI"
+api_urls = ["https://api.jiekou.ai/openai"]
+
+[destinations.config]
+provider_id = "jiekou"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "kenari"
+type = "models_dev"
+name = "Kenari"
+api_urls = ["https://kenari.id/v1"]
+
+[destinations.config]
+provider_id = "kenari"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "kilo"
+type = "models_dev"
+name = "Kilo Gateway"
+api_urls = ["https://api.kilo.ai/api/gateway"]
+
+[destinations.config]
+provider_id = "kilo"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "kimi-code-plan-cn"
+type = "models_dev"
+name = "Kimi For Coding (kimi.com)"
+api_urls = ["https://api.kimi.com/coding/v1"]
+
+[destinations.config]
+provider_id = "kimi-code-plan-cn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "kimi-code-plan-global"
+type = "models_dev"
+name = "Kimi For Coding (kimi.ai)"
+api_urls = ["https://api.kimi.ai/coding/v1"]
+
+[destinations.config]
+provider_id = "kimi-code-plan-global"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "klokintegration"
+type = "models_dev"
+name = "klokintegration.se"
+api_urls = ["https://api-gw.klok.ipaas.se/proxy/kloker-key/v1"]
+
+[destinations.config]
+provider_id = "klokintegration"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "kosmik"
+type = "models_dev"
+name = "Kosmik Compute"
+api_urls = ["https://api.koscompute.com/v1"]
+
+[destinations.config]
+provider_id = "kosmik"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "kuae-cloud-coding-plan"
+type = "models_dev"
+name = "KUAE Cloud Coding Plan"
+api_urls = ["https://coding-plan-endpoint.kuaecloud.net/v1"]
+
+[destinations.config]
+provider_id = "kuae-cloud-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "lilac"
+type = "models_dev"
+name = "Lilac"
+api_urls = ["https://api.getlilac.com/v1"]
+
+[destinations.config]
+provider_id = "lilac"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "llama"
+type = "models_dev"
+name = "Llama"
+api_urls = ["https://api.llama.com/compat/v1"]
+
+[destinations.config]
+provider_id = "llama"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "llmgateway"
+type = "models_dev"
+name = "DevPass (LLM Gateway)"
+api_urls = ["https://api.llmgateway.io/v1"]
+
+[destinations.config]
+provider_id = "llmgateway"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "llmgateway-providers"
+type = "models_dev"
+name = "LLM Gateway"
+# Shares API URL with llmgateway. Enable only after disabling or rerouting that instance.
+enabled = false
+api_urls = ["https://api.llmgateway.io/v1"]
+
+[destinations.config]
+provider_id = "llmgateway-providers"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "llmtech"
+type = "models_dev"
+name = "LLM Tech"
+api_urls = ["https://api.llmtech.eu/v1"]
+
+[destinations.config]
+provider_id = "llmtech"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "llmtr"
+type = "models_dev"
+name = "LLMTR"
+api_urls = ["https://llmtr.com/v1"]
+
+[destinations.config]
+provider_id = "llmtr"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "lmstudio"
+type = "models_dev"
+name = "LMStudio"
+# Published endpoint requires local or account-specific configuration: http://127.0.0.1:1234/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "lmstudio"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "longcat"
+type = "models_dev"
+name = "LongCat"
+api_urls = ["https://api.longcat.chat/openai"]
+
+[destinations.config]
+provider_id = "longcat"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "lucidquery"
+type = "models_dev"
+name = "LucidQuery"
+api_urls = ["https://api.lucidquery.com/v1"]
+
+[destinations.config]
+provider_id = "lucidquery"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "lynkr"
+type = "models_dev"
+name = "Lynkr"
+# Published endpoint requires local or account-specific configuration: http://127.0.0.1:8081/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "lynkr"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "meganova"
+type = "models_dev"
+name = "Meganova"
+api_urls = ["https://api.meganova.ai/v1"]
+
+[destinations.config]
+provider_id = "meganova"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "melious"
+type = "models_dev"
+name = "Melious"
+api_urls = ["https://api.melious.ai/v1"]
+
+[destinations.config]
+provider_id = "melious"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "merge-gateway"
+type = "models_dev"
+name = "Merge Gateway"
+api_urls = ["https://api-gateway.merge.dev/v1/ai-sdk"]
+
+[destinations.config]
+provider_id = "merge-gateway"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "meta"
+type = "models_dev"
+name = "Meta"
+api_urls = ["https://api.meta.ai/v1"]
+
+[destinations.config]
+provider_id = "meta"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "minimax"
+type = "models_dev"
+name = "MiniMax (minimax.io)"
+api_urls = ["https://api.minimax.io/anthropic/v1"]
+
+[destinations.config]
+provider_id = "minimax"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "minimax-cn"
+type = "models_dev"
+name = "MiniMax (minimax.cn)"
+api_urls = ["https://api.minimax.cn/anthropic/v1", "https://api.minimaxi.com/v1"]
+
+[destinations.config]
+provider_id = "minimax-cn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "minimax-cn-coding-plan"
+type = "models_dev"
+name = "MiniMax Token Plan (minimax.cn)"
+# Shares API URL with minimax-cn. Enable only after disabling or rerouting that instance.
+enabled = false
+api_urls = ["https://api.minimax.cn/anthropic/v1"]
+
+[destinations.config]
+provider_id = "minimax-cn-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "minimax-coding-plan"
+type = "models_dev"
+name = "MiniMax Token Plan (minimax.io)"
+# Shares API URL with minimax. Enable only after disabling or rerouting that instance.
+enabled = false
+api_urls = ["https://api.minimax.io/anthropic/v1"]
+
+[destinations.config]
+provider_id = "minimax-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "mistral"
+type = "models_dev"
+name = "Mistral"
+api_urls = ["https://api.mistral.ai/v1"]
+
+[destinations.config]
+provider_id = "mistral"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "mixlayer"
+type = "models_dev"
+name = "Mixlayer"
+api_urls = ["https://models.mixlayer.ai/v1"]
+
+[destinations.config]
+provider_id = "mixlayer"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "moark"
+type = "models_dev"
+name = "Moark"
+api_urls = ["https://moark.com/v1"]
+
+[destinations.config]
+provider_id = "moark"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "modal"
+type = "models_dev"
+name = "Modal"
+api_urls = ["https://inference.us-west.modal.direct/v1"]
+
+[destinations.config]
+provider_id = "modal"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "model-oracle-ai"
+type = "models_dev"
+name = "Model Oracle AI"
+api_urls = ["https://api.modeloracle.com/api/v1"]
+
+[destinations.config]
+provider_id = "model-oracle-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "modelis"
+type = "models_dev"
+name = "Modelis"
+api_urls = ["https://modelishub.com/v1"]
+
+[destinations.config]
+provider_id = "modelis"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "modelscope"
+type = "models_dev"
+name = "ModelScope"
+api_urls = ["https://api-inference.modelscope.cn/v1"]
+
+[destinations.config]
+provider_id = "modelscope"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "moonshotai"
+type = "models_dev"
+name = "Moonshot AI"
+api_urls = ["https://api.moonshot.ai/v1"]
+
+[destinations.config]
+provider_id = "moonshotai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "moonshotai-cn"
+type = "models_dev"
+name = "Moonshot AI (China)"
+api_urls = ["https://api.moonshot.cn/v1"]
+
+[destinations.config]
+provider_id = "moonshotai-cn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "morph"
+type = "models_dev"
+name = "Morph"
+api_urls = ["https://api.morphllm.com/v1"]
+
+[destinations.config]
+provider_id = "morph"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "nan"
+type = "models_dev"
+name = "NaN"
+api_urls = ["https://api.nan.builders/v1"]
+
+[destinations.config]
+provider_id = "nan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "nano-gpt"
+type = "models_dev"
+name = "NanoGPT"
+api_urls = ["https://nano-gpt.com/api/v1"]
+
+[destinations.config]
+provider_id = "nano-gpt"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "nearai"
+type = "models_dev"
+name = "NEAR AI Cloud"
+api_urls = ["https://cloud-api.near.ai/v1"]
+
+[destinations.config]
+provider_id = "nearai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "nebius"
+type = "models_dev"
+name = "Nebius Token Factory"
+api_urls = ["https://api.tokenfactory.nebius.com/v1"]
+
+[destinations.config]
+provider_id = "nebius"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "neon"
+type = "models_dev"
+name = "Neon"
+# Published endpoint requires local or account-specific configuration: ${NEON_AI_GATEWAY_BASE_URL}/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "neon"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "neosmith"
+type = "models_dev"
+name = "NeoSmith"
+api_urls = ["https://router.neosmith.ai/v1"]
+
+[destinations.config]
+provider_id = "neosmith"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "neuralwatt"
+type = "models_dev"
+name = "Neuralwatt"
+api_urls = ["https://api.neuralwatt.com/v1"]
+
+[destinations.config]
+provider_id = "neuralwatt"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "nova"
+type = "models_dev"
+name = "Nova"
+api_urls = ["https://api.nova.amazon.com/v1"]
+
+[destinations.config]
+provider_id = "nova"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "novita-ai"
+type = "models_dev"
+name = "NovitaAI"
+api_urls = ["https://api.novita.ai/openai", "https://api.novita.ai/openai/v1"]
+
+[destinations.config]
+provider_id = "novita-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "nvidia"
+type = "models_dev"
+name = "Nvidia"
+api_urls = ["https://integrate.api.nvidia.com/v1"]
+
+[destinations.config]
+provider_id = "nvidia"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "oci"
+type = "models_dev"
+name = "OCI Generative AI"
+api_urls = ["https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/openai/v1"]
+
+[destinations.config]
+provider_id = "oci"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "ofox"
+type = "models_dev"
+name = "Ofox"
+api_urls = ["https://api.ofox.ai/v1"]
+
+[destinations.config]
+provider_id = "ofox"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "ollama-cloud"
+type = "models_dev"
+name = "Ollama Cloud"
+api_urls = ["https://ollama.com/v1"]
+
+[destinations.config]
+provider_id = "ollama-cloud"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "openai"
+type = "models_dev"
+name = "OpenAI"
+api_urls = ["https://api.openai.com/v1"]
+
+[destinations.config]
+provider_id = "openai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "opencode"
+type = "models_dev"
+name = "OpenCode Zen"
+api_urls = ["https://opencode.ai/zen/v1"]
+
+[destinations.config]
+provider_id = "opencode"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "opencode-go"
+type = "models_dev"
+name = "OpenCode Go"
+api_urls = ["https://opencode.ai/zen/go/v1"]
+
+[destinations.config]
+provider_id = "opencode-go"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "openreason"
+type = "models_dev"
+name = "OpenReason"
+api_urls = ["https://api.openreason.app/v1"]
+
+[destinations.config]
+provider_id = "openreason"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "openrouter"
+type = "models_dev"
+name = "OpenRouter"
+api_urls = ["https://openrouter.ai/api/v1"]
+
+[destinations.config]
+provider_id = "openrouter"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "opper"
+type = "models_dev"
+name = "Opper"
+api_urls = ["https://api.opper.ai/v3/compat"]
+
+[destinations.config]
+provider_id = "opper"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "orcarouter"
+type = "models_dev"
+name = "OrcaRouter"
+api_urls = ["https://api.orcarouter.ai/v1"]
+
+[destinations.config]
+provider_id = "orcarouter"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "ovhcloud"
+type = "models_dev"
+name = "OVHcloud AI Endpoints"
+api_urls = ["https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"]
+
+[destinations.config]
+provider_id = "ovhcloud"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "pareto"
+type = "models_dev"
+name = "Pareto Inference"
+api_urls = ["https://api.paretoinference.com/v1"]
+
+[destinations.config]
+provider_id = "pareto"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "pendra"
+type = "models_dev"
+name = "Pendra"
+api_urls = ["https://api.pendra.ai/api/v1"]
+
+[destinations.config]
+provider_id = "pendra"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "perplexity"
+type = "models_dev"
+name = "Perplexity"
+api_urls = ["https://api.perplexity.ai"]
+
+[destinations.config]
+provider_id = "perplexity"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "perplexity-agent"
+type = "models_dev"
+name = "Perplexity Agent"
+api_urls = ["https://api.perplexity.ai/v1"]
+
+[destinations.config]
+provider_id = "perplexity-agent"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "pioneer"
+type = "models_dev"
+name = "Pioneer"
+api_urls = ["https://api.fastino.ai/v1"]
+
+[destinations.config]
+provider_id = "pioneer"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "poe"
+type = "models_dev"
+name = "Poe"
+api_urls = ["https://api.poe.com/v1"]
+
+[destinations.config]
+provider_id = "poe"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "poolside"
+type = "models_dev"
+name = "Poolside"
+api_urls = ["https://inference.poolside.ai/v1"]
+
+[destinations.config]
+provider_id = "poolside"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "privatemode-ai"
+type = "models_dev"
+name = "Privatemode AI"
+# Published endpoint requires local or account-specific configuration: http://localhost:8080/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "privatemode-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "qihang-ai"
+type = "models_dev"
+name = "QiHang"
+api_urls = ["https://api.qhaigc.net/v1"]
+
+[destinations.config]
+provider_id = "qihang-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "qiniu-ai"
+type = "models_dev"
+name = "Qiniu"
+api_urls = ["https://api.qnaigc.com/v1"]
+
+[destinations.config]
+provider_id = "qiniu-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "qvac"
+type = "models_dev"
+name = "QVAC"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "qvac"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "regolo-ai"
+type = "models_dev"
+name = "Regolo AI"
+api_urls = ["https://api.regolo.ai/v1"]
+
+[destinations.config]
+provider_id = "regolo-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "requesty"
+type = "models_dev"
+name = "Requesty"
+api_urls = ["https://router.requesty.ai/v1"]
+
+[destinations.config]
+provider_id = "requesty"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "routing-run"
+type = "models_dev"
+name = "routing.run"
+api_urls = ["https://api.routing.run/v1"]
+
+[destinations.config]
+provider_id = "routing-run"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "runinfra"
+type = "models_dev"
+name = "RunInfra"
+api_urls = ["https://api.runinfra.ai/v1"]
+
+[destinations.config]
+provider_id = "runinfra"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "sakana"
+type = "models_dev"
+name = "Sakana AI"
+api_urls = ["https://api.sakana.ai/v1"]
+
+[destinations.config]
+provider_id = "sakana"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "salad-cloud"
+type = "models_dev"
+name = "SaladCloud AI Gateway"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "salad-cloud"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "sap-ai-core"
+type = "models_dev"
+name = "SAP AI Core"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "sap-ai-core"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "sarvam"
+type = "models_dev"
+name = "Sarvam AI"
+api_urls = ["https://api.sarvam.ai/v1"]
+
+[destinations.config]
+provider_id = "sarvam"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "scaleway"
+type = "models_dev"
+name = "Scaleway"
+api_urls = ["https://api.scaleway.ai/v1"]
+
+[destinations.config]
+provider_id = "scaleway"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "scnet-token-plan"
+type = "models_dev"
+name = "SCNet Token Plan"
+api_urls = ["https://api.scnet.cn/api/llm/v1"]
+
+[destinations.config]
+provider_id = "scnet-token-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "scx-ai"
+type = "models_dev"
+name = "SCX.ai"
+api_urls = ["https://api.scx.ai/v1"]
+
+[destinations.config]
+provider_id = "scx-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "sensenova"
+type = "models_dev"
+name = "SenseNova (China)"
+api_urls = ["https://token.sensenova.cn/v1"]
+
+[destinations.config]
+provider_id = "sensenova"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "siliconflow"
+type = "models_dev"
+name = "SiliconFlow"
+api_urls = ["https://api.siliconflow.com/v1"]
+
+[destinations.config]
+provider_id = "siliconflow"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "siliconflow-cn"
+type = "models_dev"
+name = "SiliconFlow (China)"
+api_urls = ["https://api.siliconflow.cn/v1"]
+
+[destinations.config]
+provider_id = "siliconflow-cn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "snowflake-cortex"
+type = "models_dev"
+name = "Snowflake Cortex"
+# Published endpoint requires local or account-specific configuration: https://${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com/api/v2/cortex/v1
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "snowflake-cortex"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "stackit"
+type = "models_dev"
+name = "STACKIT"
+api_urls = ["https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1"]
+
+[destinations.config]
+provider_id = "stackit"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "standardcompute"
+type = "models_dev"
+name = "Standard Compute"
+api_urls = ["https://api.stdcmpt.com/v1"]
+
+[destinations.config]
+provider_id = "standardcompute"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "stepfun"
+type = "models_dev"
+name = "StepFun (China)"
+api_urls = ["https://api.stepfun.com/v1"]
+
+[destinations.config]
+provider_id = "stepfun"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "stepfun-ai"
+type = "models_dev"
+name = "StepFun (Global)"
+api_urls = ["https://api.stepfun.ai/v1"]
+
+[destinations.config]
+provider_id = "stepfun-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "stepfun-ai-step-plan"
+type = "models_dev"
+name = "StepFun Step Plan (Global)"
+api_urls = ["https://api.stepfun.ai/step_plan/v1"]
+
+[destinations.config]
+provider_id = "stepfun-ai-step-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "stepfun-step-plan"
+type = "models_dev"
+name = "StepFun Step Plan (China)"
+api_urls = ["https://api.stepfun.com/step_plan/v1"]
+
+[destinations.config]
+provider_id = "stepfun-step-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "subconscious"
+type = "models_dev"
+name = "Subconscious"
+api_urls = ["https://api.subconscious.dev/v1"]
+
+[destinations.config]
+provider_id = "subconscious"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "submodel"
+type = "models_dev"
+name = "submodel"
+api_urls = ["https://llm.submodel.ai/v1"]
+
+[destinations.config]
+provider_id = "submodel"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "synthetic"
+type = "models_dev"
+name = "Synthetic"
+api_urls = ["https://api.synthetic.new/openai/v1"]
+
+[destinations.config]
+provider_id = "synthetic"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "tempr"
+type = "models_dev"
+name = "Tempr Gateway"
+api_urls = ["https://api.temprhq.io/v1"]
+
+[destinations.config]
+provider_id = "tempr"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "tencent-coding-plan"
+type = "models_dev"
+name = "Tencent Coding Plan (China)"
+api_urls = ["https://api.lkeap.cloud.tencent.com/coding/v3"]
+
+[destinations.config]
+provider_id = "tencent-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "tencent-token-plan"
+type = "models_dev"
+name = "Tencent Token Plan"
+api_urls = ["https://api.lkeap.cloud.tencent.com/plan/v3"]
+
+[destinations.config]
+provider_id = "tencent-token-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "tencent-tokenhub"
+type = "models_dev"
+name = "Tencent TokenHub"
+api_urls = ["https://tokenhub.tencentmaas.com/v1"]
+
+[destinations.config]
+provider_id = "tencent-tokenhub"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "tensorx"
+type = "models_dev"
+name = "TensorX"
+api_urls = ["https://api.tensorx.ai/v1"]
+
+[destinations.config]
+provider_id = "tensorx"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "the-grid-ai"
+type = "models_dev"
+name = "The Grid AI"
+api_urls = ["https://api.thegrid.ai/v1"]
+
+[destinations.config]
+provider_id = "the-grid-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "thinkingmachines"
+type = "models_dev"
+name = "Thinking Machines"
+api_urls = ["https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api/v1"]
+
+[destinations.config]
+provider_id = "thinkingmachines"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "tinfoil"
+type = "models_dev"
+name = "Tinfoil"
+api_urls = ["https://inference.tinfoil.sh/v1"]
+
+[destinations.config]
+provider_id = "tinfoil"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "togetherai"
+type = "models_dev"
+name = "Together AI"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "togetherai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "tokengo"
+type = "models_dev"
+name = "TokenGo"
+api_urls = ["https://api.tokengo.com/v1"]
+
+[destinations.config]
+provider_id = "tokengo"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "tokenrouter"
+type = "models_dev"
+name = "TokenRouter"
+api_urls = ["https://api.tokenrouter.com/v1"]
+
+[destinations.config]
+provider_id = "tokenrouter"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "trustedrouter"
+type = "models_dev"
+name = "TrustedRouter"
+api_urls = ["https://api.trustedrouter.com/v1"]
+
+[destinations.config]
+provider_id = "trustedrouter"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "umans-ai"
+type = "models_dev"
+name = "Umans AI"
+api_urls = ["https://api.code.umans.ai/v1"]
+
+[destinations.config]
+provider_id = "umans-ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "umans-ai-coding-plan"
+type = "models_dev"
+name = "Umans AI Coding Plan"
+# Shares API URL with umans-ai. Enable only after disabling or rerouting that instance.
+enabled = false
+api_urls = ["https://api.code.umans.ai/v1"]
+
+[destinations.config]
+provider_id = "umans-ai-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "unorouter"
+type = "models_dev"
+name = "UnoRouter"
+api_urls = ["https://api.unorouter.com/v1"]
+
+[destinations.config]
+provider_id = "unorouter"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "upstage"
+type = "models_dev"
+name = "Upstage"
+api_urls = ["https://api.upstage.ai/v1/solar"]
+
+[destinations.config]
+provider_id = "upstage"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "v0"
+type = "models_dev"
+name = "v0"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "v0"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "vancine"
+type = "models_dev"
+name = "Vancine"
+api_urls = ["https://vancine.com/v1"]
+
+[destinations.config]
+provider_id = "vancine"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "venice"
+type = "models_dev"
+name = "Venice AI"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "venice"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "vercel"
+type = "models_dev"
+name = "Vercel AI Gateway"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "vercel"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "vispark"
+type = "models_dev"
+name = "Vispark"
+api_urls = ["https://api.lab.vispark.in/v1"]
+
+[destinations.config]
+provider_id = "vispark"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "vivgrid"
+type = "models_dev"
+name = "Vivgrid"
+api_urls = ["https://api.vivgrid.com/v1"]
+
+[destinations.config]
+provider_id = "vivgrid"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "volcengine"
+type = "models_dev"
+name = "Volcengine Ark"
+api_urls = ["https://ark.cn-beijing.volces.com/api/v3"]
+
+[destinations.config]
+provider_id = "volcengine"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "volcengine-coding-plan"
+type = "models_dev"
+name = "Volcengine Ark Coding Plan"
+api_urls = ["https://ark.cn-beijing.volces.com/api/coding/v3"]
+
+[destinations.config]
+provider_id = "volcengine-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "vultr"
+type = "models_dev"
+name = "Vultr"
+api_urls = ["https://api.vultrinference.com/v1"]
+
+[destinations.config]
+provider_id = "vultr"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "wafer-ai"
+type = "models_dev"
+name = "Wafer"
+api_urls = ["https://pass.wafer.ai/v1"]
+
+[destinations.config]
+provider_id = "wafer.ai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "wallaby"
+type = "models_dev"
+name = "Wallaby"
+api_urls = ["https://api.wallabytoken.com/v1"]
+
+[destinations.config]
+provider_id = "wallaby"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "wandb"
+type = "models_dev"
+name = "CoreWeave"
+api_urls = ["https://api.inference.wandb.ai/v1"]
+
+[destinations.config]
+provider_id = "wandb"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "watsonx"
+type = "models_dev"
+name = "watsonx.ai"
+# No API endpoint published in models.dev.
+enabled = false
+api_urls = []
+
+[destinations.config]
+provider_id = "watsonx"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "xai"
+type = "models_dev"
+name = "xAI"
+api_urls = ["https://api.x.ai/v1"]
+
+[destinations.config]
+provider_id = "xai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "xiaomi"
+type = "models_dev"
+name = "Xiaomi"
+api_urls = ["https://api.xiaomimimo.com/v1"]
+
+[destinations.config]
+provider_id = "xiaomi"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "xiaomi-token-plan-ams"
+type = "models_dev"
+name = "Xiaomi Token Plan (Europe)"
+api_urls = ["https://token-plan-ams.xiaomimimo.com/v1"]
+
+[destinations.config]
+provider_id = "xiaomi-token-plan-ams"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "xiaomi-token-plan-cn"
+type = "models_dev"
+name = "Xiaomi Token Plan (China)"
+api_urls = ["https://token-plan-cn.xiaomimimo.com/v1"]
+
+[destinations.config]
+provider_id = "xiaomi-token-plan-cn"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "xiaomi-token-plan-sgp"
+type = "models_dev"
+name = "Xiaomi Token Plan (Singapore)"
+api_urls = ["https://token-plan-sgp.xiaomimimo.com/v1"]
+
+[destinations.config]
+provider_id = "xiaomi-token-plan-sgp"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "xpersona"
+type = "models_dev"
+name = "Xpersona"
+api_urls = ["https://www.xpersona.co/v1"]
+
+[destinations.config]
+provider_id = "xpersona"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "zai"
+type = "models_dev"
+name = "Z.AI"
+api_urls = ["https://api.z.ai/api/paas/v4"]
+
+[destinations.config]
+provider_id = "zai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "zai-coding-plan"
+type = "models_dev"
+name = "Z.AI Coding Plan"
+api_urls = ["https://api.z.ai/api/coding/paas/v4"]
+
+[destinations.config]
+provider_id = "zai-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "zeldoc"
+type = "models_dev"
+name = "Zeldoc"
+api_urls = ["https://api.zeldoc.ai/v1"]
+
+[destinations.config]
+provider_id = "zeldoc"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "zenifra"
+type = "models_dev"
+name = "Zenifra"
+api_urls = ["https://ai.zenifra.com/v1"]
+
+[destinations.config]
+provider_id = "zenifra"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "zenmux"
+type = "models_dev"
+name = "ZenMux"
+api_urls = ["https://zenmux.ai/api/v1"]
+
+[destinations.config]
+provider_id = "zenmux"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "zhipuai"
+type = "models_dev"
+name = "Zhipu AI"
+api_urls = ["https://open.bigmodel.cn/api/paas/v4"]
+
+[destinations.config]
+provider_id = "zhipuai"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+
+[[destinations]]
+id = "zhipuai-coding-plan"
+type = "models_dev"
+name = "Zhipu AI Coding Plan"
+api_urls = ["https://open.bigmodel.cn/api/coding/paas/v4"]
+
+[destinations.config]
+provider_id = "zhipuai-coding-plan"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10

@@ -6,7 +6,7 @@ English | [简体中文](./README.zh_CN.md)
 
 Adds a cost panel to Codex CLI: the native interface stays at the top, while the panel below shows the current session's total cost, the additional cost incurred during monitoring, and the request count.
 
-Currently supports billing platforms based on [Claude Code Hub](https://github.com/ding113/claude-code-hub). Billing amounts can be converted to a payment currency using a fixed value, a JSON source, or an XML source.
+Supports billing platforms based on [Claude Code Hub](https://github.com/ding113/claude-code-hub) and token-based cost estimates using models.dev. Billing amounts can be converted to a payment currency using a fixed value, a JSON source, or an XML source.
 
 ## Download and Usage
 
@@ -38,7 +38,7 @@ Codex opens in the working directory where you run `codex-panel`. Run the execut
 
 The program reads authentication configuration from `CODEX_HOME` (default: `~/.codex`). API keys are resolved in this order: `PREVX_API_KEY` → the environment variable specified by the current provider's `env_key` → `experimental_bearer_token` → `OPENAI_API_KEY` in `auth.json`. If you only use ChatGPT login, provide a Hub API key through `PREVX_API_KEY`.
 
-In the panel, `Session total` is the current session's total cost, and `Since monitoring` is the additional cost accumulated after the first successful query, which resets on restart. `Requests` is the request count returned by the billing platform, and `Estimated` indicates a cost estimate based on token pricing.
+In billed mode, `Session total` shows the platform's current session bill and request count; `Since monitoring` accumulates increases after the first successful query. In `Estimated` mode, Session shows `Not available`. Monitoring adds each observed response's own token usage at that response's model price, including the first response after monitoring starts. `Requests` counts successfully priced responses; duplicate usage notifications and turn completion events do not add requests. Monitoring resets on restart; historical session usage is not estimated.
 
 Click **Open Settings** in the lower panel to view configuration and conversion status; press Esc to return. Settings are read-only, so restart the program after changing the configuration. Exiting Codex closes the interface; press `Ctrl-b`, then `d` to detach while keeping the session running.
 
@@ -74,13 +74,46 @@ hub_url = "https://billing.example.com"
 | Field | Description |
 | --- | --- |
 | `id` | Unique instance identifier, also used to match user overrides |
-| `type` | Billing type; currently supports `claude-code-hub` |
+| `type` | Billing type; supports `claude-code-hub` and `models_dev` |
 | `name` | Display name |
 | `enabled` | Whether the instance is enabled; defaults to `true` |
 | `api_urls` | Matches the Codex provider's `base_url`; each URL can belong to only one enabled instance |
 | `config.hub_url` | Billing site URL, containing only the scheme, host, and optional port |
 
 Set the provider's `base_url` in Codex's `config.toml`. Temporary overrides supplied through CLI `-c` are currently not reflected in the panel.
+
+### models.dev
+
+`models_dev` estimates token costs using the [models.dev catalog](https://models.dev/api.json?type=all). The defaults were rebuilt from 226 catalog providers: 196 enabled providers with 198 exact API URL mappings, plus the two Hub instances. The remaining 30 providers are disabled with comments explaining missing, local, account-specific or shared endpoints. Names, provider IDs and published URLs come from the catalog; matching existing concrete API URLs are retained as explicit aliases. Runway and SambaNova are absent from the current catalog and have no default price destination. `apikey-names.json` records the crawl source, timestamp, enabled mappings and disabled providers.
+
+```toml
+[[destinations]]
+id = "my-provider"
+type = "models_dev"
+name = "My Provider"
+api_urls = ["https://api.example.com/v1"]
+
+[destinations.config]
+provider_id = "provider-id-from-models-dev"
+source_url = "https://models.dev/api.json?type=all"
+cache_seconds = 300
+timeout_seconds = 10
+note = "Optional pricing information shown when this destination is recognized."
+
+# Optional explicit mapping from API identifiers to catalog model IDs.
+[destinations.config.model_aliases]
+"api-model-id" = "catalog-model-id"
+```
+
+`provider_id` is required. `source_url` defaults to `https://models.dev/api.json`, cache to 300 seconds and timeout to 10 seconds. `note` is optional and appears once in the selected destination's recognition detail. The built-in DeepSeek instance notes that its published prices cover only off-peak billing and estimates may understate actual charges. There is no global time-of-day pricing notice.
+
+Lookup uses `catalog[provider_id].models[model_id].cost`, matching exact API model IDs, including IDs containing `/`. Unknown IDs require an explicit `model_aliases` entry. Missing ordinary input/output prices, malformed responses and network failures report errors. Optional cache read/write and reasoning rates fall back to ordinary input/output rates. Zero is accepted only when explicitly published by the source. The adapter uses the published base `cost` rates; it does not reconstruct context tiers, subscription charges or non-token billing.
+
+models.dev prices are USD per million tokens. Billing stays in USD unless a separate payment conversion is configured; the old `provider_slug` and `display_currency` fields are replaced by `provider_id` and the source's fixed USD currency. Existing user overrides using `type = "llmrates"` must migrate to `models_dev` and its config fields.
+
+Estimated accounting uses immutable per-response model and usage snapshots, so later model switches cannot reprice earlier responses. It does not read or write session history in `~/.codex-panel/history`. Before a model is available, Monitoring shows zero cost and zero requests while prices wait. Once the configured or session model is available, prices are fetched immediately without requiring a session or token usage. Price failures preserve accumulated amounts and keep responses queued for retry at their original models; failures never count as zero cost. Responses without usable per-request telemetry are reported as unavailable rather than charging historical totals.
+
+The display destination area shows only fetched prices. The configured note appears once in recognition details; query errors stay in the host status. Settings show provider ID, source, USD billing currency, cache, timeout and model aliases. Data attribution: [models.dev](https://models.dev), maintained in [anomalyco/models.dev](https://github.com/anomalyco/models.dev).
 
 ### Payment Currency Conversion
 

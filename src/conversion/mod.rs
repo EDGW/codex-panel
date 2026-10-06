@@ -1,11 +1,13 @@
 //! Source composition and numeric conversion, independent of destination protocols.
 pub mod config;
-pub mod extraction;
-mod http;
 
 use crate::dest::{PaymentInfo, Result};
-use extraction::{Extractor, Scalar};
-use http::HttpGet;
+use crate::source::{
+    Retrieval,
+    extraction::{Extractor, Scalar},
+    http::HttpGet,
+    numeric::number,
+};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -18,11 +20,7 @@ pub fn positive(value: f64) -> Result<f64> {
 }
 
 pub fn numeric(value: Scalar) -> Result<f64> {
-    positive(match value {
-        Scalar::Number(n) => n,
-        Scalar::Text(s) => s.trim().parse().map_err(|_| "invalid numeric string")?,
-        _ => return Err("price must be a number or numeric string".into()),
-    })
+    positive(number(value)?)
 }
 
 pub trait NumericSource: Send + Sync {

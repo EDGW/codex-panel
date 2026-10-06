@@ -2,7 +2,6 @@
 use crate::conversion::{PaymentConversion, config as conversion_config};
 use crate::dest::{
     Result,
-    claude_code_hub::ClaudeCodeHub,
     registry::{DestinationFactory, DestinationMappings, Registry, normalize_url, validate_id},
 };
 use serde::Deserialize;
@@ -37,29 +36,7 @@ impl LoadedConfig {
     }
 }
 
-pub fn destination_registry() -> Result<Registry> {
-    let mut registry = Registry::new();
-    registry.register(ClaudeCodeHub::TYPE, ClaudeCodeHub::parse_config)?;
-    Ok(registry)
-}
-
 pub fn discover() -> Result<ConfigPaths> {
-    for (old, replacement) in [
-        (
-            "CC_PANEL_DEST_CONFIG",
-            "CC_PANEL_DEFAULTS_CONFIG / CC_PANEL_CONFIG",
-        ),
-        (
-            "CC_PANEL_RELAY_URL",
-            "destinations.config.hub_url in CC_PANEL_CONFIG",
-        ),
-    ] {
-        if std::env::var_os(old).is_some() {
-            return Err(format!(
-                "{old} is no longer supported; migrate to {replacement} (destinations.toml)"
-            ));
-        }
-    }
     let executable = std::env::current_exe().map_err(|e| e.to_string())?;
     let user_override = std::env::var_os("CC_PANEL_CONFIG").map(PathBuf::from);
     let home = std::env::var_os("HOME")
@@ -292,10 +269,6 @@ fn merge(
     }
 }
 
-pub fn load(paths: &ConfigPaths) -> Result<LoadedConfig> {
-    load_with_registry(paths, &destination_registry()?)
-}
-
 pub fn load_with_registry(paths: &ConfigPaths, registry: &Registry) -> Result<LoadedConfig> {
     let mut entries: Vec<Entry> = Vec::new();
     for path in std::iter::once(&paths.defaults).chain(paths.user.iter()) {
@@ -405,6 +378,35 @@ mod tests {
     use std::os::unix::fs::symlink;
 
     #[test]
+    fn shipped_catalog_routes_are_valid_and_only_deepseek_has_a_note() {
+        let paths = ConfigPaths {
+            defaults: PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("destinations.toml"),
+            user: None,
+        };
+        let registry = crate::dest::builtins::registry().unwrap();
+        let loaded = load_with_registry(&paths, &registry).unwrap();
+        let metadata: serde_json::Value =
+            serde_json::from_str(include_str!("../apikey-names.json")).unwrap();
+        for (url, instance) in metadata["mappings"].as_object().unwrap() {
+            let routed = loaded.mappings.destination_id(url).unwrap();
+            assert_eq!(routed, instance.as_str().unwrap());
+            assert_eq!(loaded.instance(routed).kind, "models_dev");
+        }
+        assert_eq!(
+            loaded
+                .mappings
+                .destination_id("https://cc2.caaa.tech/v1")
+                .unwrap(),
+            "cc2"
+        );
+        assert_eq!(
+            loaded.instance("deepseek").factory.warnings(),
+            ["Only off-peak prices are shown; estimated costs may be lower than actual charges."]
+        );
+        assert!(loaded.instance("openai").factory.warnings().is_empty());
+    }
+
+    #[test]
     fn release_defaults_follow_executable_symlinks_and_respect_overrides() {
         struct TestDir(PathBuf);
         impl Drop for TestDir {
@@ -432,7 +434,12 @@ mod tests {
             let paths = discover_at(None, None, path, &dir.0, false).unwrap();
             assert_eq!(paths.defaults, std::fs::canonicalize(&defaults).unwrap());
             assert!(paths.user.is_none());
-            assert!(load(&paths).unwrap().instances.is_empty());
+            assert!(
+                load_with_registry(&paths, &Registry::new())
+                    .unwrap()
+                    .instances
+                    .is_empty()
+            );
         }
         let override_path = dir.0.join("override.toml");
         std::fs::write(&override_path, "version = 1\n").unwrap();

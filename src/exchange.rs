@@ -175,12 +175,18 @@ impl Exchange {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::conversion::config;
 
-    fn configured(text: &str) -> Arc<dyn PaymentConversion> {
-        config::parse(&text.parse().unwrap(), true)
-            .unwrap()
-            .unwrap()
+    struct ReadyConversion;
+    impl PaymentConversion for ReadyConversion {
+        fn payment_info(&self) -> Result<PaymentInfo> {
+            Ok(payment(0.28))
+        }
+        fn initial_payment(&self) -> Result<Option<PaymentInfo>> {
+            self.payment_info().map(Some)
+        }
+        fn cache_duration(&self) -> Duration {
+            Duration::ZERO
+        }
     }
     fn payment(rate: f64) -> PaymentInfo {
         PaymentInfo {
@@ -189,15 +195,12 @@ mod tests {
         }
     }
     #[test]
-    fn absent_and_fixed_conversion_are_ready_without_a_worker() {
+    fn absent_and_initial_conversion_are_ready_without_a_worker() {
         let mut absent = Exchange::new(None).unwrap();
         absent.update(true);
         assert!(absent.worker.is_none());
         assert_eq!(absent.detail(), "");
-        let fixed = Exchange::new(Some(configured(
-            "currency='CNY'\nmultiplier=2.0\n[source]\ntype='value'\nvalue=0.14",
-        )))
-        .unwrap();
+        let fixed = Exchange::new(Some(Arc::new(ReadyConversion))).unwrap();
         assert!(fixed.worker.is_none());
         assert_eq!(fixed.payment, Some(payment(0.28)));
         assert_eq!(fixed.detail(), "");

@@ -1,6 +1,8 @@
 //! Application composition and process orchestration. Arguments other than the panel version query belong to Codex.
 use crate::{
-    AppResult, codex, config, panel,
+    AppResult, codex, config,
+    dest::builtins,
+    panel,
     runtime::RuntimeDir,
     tmux::{self, Tmux},
 };
@@ -26,7 +28,8 @@ pub fn run(args: Vec<OsString>) -> AppResult<ExitCode> {
         Some("panel") => {
             let runtime = RuntimeDir::open(required_path(codex::RUNTIME_DIR)?);
             let tmux = Tmux::new(env::var(codex::TMUX_SOCKET)?);
-            let config = config::load(&config::discover()?)?;
+            let config =
+                config::load_with_registry(&discover_configuration()?, &builtins::registry()?)?;
             panel::run(&tmux, &runtime, &env::var("TMUX_PANE")?, config)?;
             Ok(ExitCode::SUCCESS)
         }
@@ -56,9 +59,30 @@ fn required_path(name: &str) -> AppResult<std::path::PathBuf> {
         .into())
 }
 
+fn discover_configuration() -> AppResult<config::ConfigPaths> {
+    for (old, replacement) in [
+        (
+            "CC_PANEL_DEST_CONFIG",
+            "CC_PANEL_DEFAULTS_CONFIG / CC_PANEL_CONFIG",
+        ),
+        (
+            "CC_PANEL_RELAY_URL",
+            "destination-specific config in CC_PANEL_CONFIG",
+        ),
+    ] {
+        if std::env::var_os(old).is_some() {
+            return Err(format!(
+                "{old} is no longer supported; migrate to {replacement} (destinations.toml)"
+            )
+            .into());
+        }
+    }
+    Ok(config::discover()?)
+}
+
 fn launch(args: &[OsString]) -> AppResult<()> {
-    let paths = config::discover()?;
-    config::load(&paths)?;
+    let paths = discover_configuration()?;
+    config::load_with_registry(&paths, &builtins::registry()?)?;
     let runtime = RuntimeDir::create()?;
     let tmux = Tmux::new(format!("codex-panel-{}", std::process::id()));
     let executable = env::current_exe()?;

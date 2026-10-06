@@ -1,8 +1,8 @@
 use crate::dest::{
     Destination, DestinationConfig, PaymentInfo, PricingInterface, Result, SessionContext, Stats,
-    TokenUsage,
+    TokenQuote, TokenRequest, TokenUsage,
 };
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -15,6 +15,7 @@ pub enum CostStatus {
     Reconnected,
     Reconnecting,
     Unavailable,
+    NotAvailable,
 }
 
 impl CostStatus {
@@ -25,6 +26,7 @@ impl CostStatus {
             Self::Reconnected => "Reconnected",
             Self::Reconnecting => "Reconnecting...",
             Self::Unavailable => "Unavailable",
+            Self::NotAvailable => "Not available",
         }
     }
 
@@ -65,6 +67,7 @@ pub struct Observation {
     pub credential_profile: Option<String>,
     pub model: Option<String>,
     pub usage: Option<TokenUsage>,
+    pub requests: Vec<TokenRequest>,
     pub revision: u64,
 }
 
@@ -79,14 +82,15 @@ impl Observation {
 
 struct Job {
     generation: u64,
-    target: SessionContext,
+    target: Option<SessionContext>,
     model: Option<String>,
-    usage: Option<TokenUsage>,
+    request: Option<TokenRequest>,
 }
 
 enum Reading {
     Session(Stats, bool),
-    Tokens { session: Stats, increment: f64 },
+    Quote(TokenQuote),
+    Tokens { currency: String, amount: f64 },
 }
 
 struct Reply {
@@ -94,47 +98,26 @@ struct Reply {
     result: Result<Reading>,
 }
 
-/// Worker-side token ledger: calculate every accepted increment before a target can change.
-/// This preserves increments when the UI discards a reply from a previous session selection.
-#[derive(Default)]
-struct TokenLedger {
-    accounts: HashMap<SessionContext, (TokenUsage, f64)>,
-}
-
-impl TokenLedger {
-    fn query(&mut self, destination: &dyn Destination, job: &Job) -> Result<Reading> {
-        let PricingInterface::TokenPrices(pricing) = destination.pricing() else {
-            return Err("destination has no token pricing interface".into());
-        };
-        let model = job
-            .model
-            .as_deref()
-            .ok_or("model unavailable for token pricing")?;
-        let total = job.usage.as_ref().ok_or("token usage unavailable")?;
-        total.validate()?;
-        let previous = self.accounts.get(&job.target);
-        let delta = if let Some((previous, _)) = previous {
-            total.delta_from(previous)?
-        } else {
-            TokenUsage::default()
-        };
-        let prices = pricing.token_prices(&job.target, model)?;
-        let increment = prices.estimate(&delta)?;
-        // Estimate the initial history with the current model, then retain priced increments.
-        // Changing the model or rate does not reprice already observed history.
-        let amount = if let Some((_, amount)) = previous {
-            amount + increment
-        } else {
-            prices.estimate(total)?
-        };
-        let session = Stats {
-            amount,
-            requests: None,
-        };
-        session.validate()?;
-        self.accounts
-            .insert(job.target.clone(), (total.clone(), amount));
-        Ok(Reading::Tokens { session, increment })
+/// Price a single immutable response snapshot; never infer request usage from session totals.
+fn query_tokens(destination: &dyn Destination, job: &Job) -> Result<Reading> {
+    let PricingInterface::TokenPrices(pricing) = destination.pricing() else {
+        return Err("destination has no token pricing interface".into());
+    };
+    let model = job
+        .model
+        .as_deref()
+        .ok_or("model unavailable for request pricing")?;
+    let quote = pricing.token_prices(job.target.as_ref(), model)?;
+    if quote.currency.trim().is_empty() {
+        return Err("token quote has no currency".into());
+    }
+    quote.prices.estimate(&TokenUsage::default())?;
+    match &job.request {
+        Some(request) => Ok(Reading::Tokens {
+            currency: quote.currency,
+            amount: quote.prices.estimate(&request.usage)?,
+        }),
+        None => Ok(Reading::Quote(quote)),
     }
 }
 
@@ -150,6 +133,8 @@ pub struct Monitor {
     revision: u64,
     model: Option<String>,
     usage: Option<TokenUsage>,
+    received_requests: HashSet<u64>,
+    request_queue: VecDeque<Job>,
     dirty: bool,
     interrupted: bool,
     reconnected: bool,
@@ -157,7 +142,7 @@ pub struct Monitor {
     stats: Option<Stats>,
     accounted: HashMap<SessionContext, Stats>,
     monitoring: Stats,
-    local_observed: bool,
+    token_monitoring: BTreeMap<String, Stats>,
     error: Option<String>,
 }
 
@@ -168,7 +153,6 @@ impl Monitor {
         let (jobs, receiver) = mpsc::channel::<Job>();
         let (sender, replies) = mpsc::channel();
         thread::spawn(move || {
-            let mut ledger = TokenLedger::default();
             while let Ok(mut job) = receiver.recv() {
                 // Only cumulative session reads can safely skip obsolete queued jobs.
                 if !local {
@@ -177,13 +161,20 @@ impl Monitor {
                     }
                 }
                 let result = match destination.pricing() {
-                    PricingInterface::SessionTotals(pricing) => pricing
-                        .session_totals(&job.target)
+                    PricingInterface::SessionTotals(pricing) => destination
+                        .config()
+                        .billing_currency
+                        .filter(|currency| !currency.trim().is_empty())
+                        .ok_or_else(|| "session pricing has no billing currency".to_owned())
+                        .and_then(|_| {
+                            pricing
+                                .session_totals(job.target.as_ref().ok_or("session unavailable")?)
+                        })
                         .and_then(|(stats, recovered)| {
                             stats.validate()?;
                             Ok(Reading::Session(stats, recovered))
                         }),
-                    PricingInterface::TokenPrices(_) => ledger.query(destination.as_ref(), &job),
+                    PricingInterface::TokenPrices(_) => query_tokens(destination.as_ref(), &job),
                 };
                 if sender.send(Reply { job, result }).is_err() {
                     break;
@@ -202,6 +193,8 @@ impl Monitor {
             revision: 0,
             model: None,
             usage: None,
+            received_requests: HashSet::new(),
+            request_queue: VecDeque::new(),
             dirty: false,
             interrupted: false,
             reconnected: false,
@@ -209,31 +202,34 @@ impl Monitor {
             stats: None,
             accounted: HashMap::new(),
             monitoring: Stats::default(),
-            local_observed: false,
+            token_monitoring: BTreeMap::new(),
             error: None,
         }
     }
 
     fn apply(&mut self, reply: Reply) {
-        let current = reply.job.generation == self.generation
-            && self.target.as_ref() == Some(&reply.job.target);
-        // A successfully priced token increment belongs to this monitoring run even after /resume.
-        if let Ok(Reading::Tokens { increment, .. }) = &reply.result {
-            self.monitoring.amount += increment;
-            self.monitoring.requests = None;
-            self.local_observed = true;
+        let current = reply.job.generation == self.generation && self.target == reply.job.target;
+        if self.local {
+            self.pending = false;
+            if reply.job.request.is_none() && (reply.job.model != self.model || !current) {
+                return;
+            }
+            if reply.result.is_ok() && reply.job.request.is_some() {
+                self.request_queue.pop_front();
+            }
+        } else {
+            if !current {
+                return;
+            }
+            self.pending = false;
         }
-        if !current {
-            return;
-        }
-        self.pending = false;
         match reply.result {
             Ok(reading) => {
                 let recovered = match reading {
                     Reading::Session(stats, recovered) => {
                         let previous = self
                             .accounted
-                            .entry(reply.job.target)
+                            .entry(reply.job.target.expect("session totals have a target"))
                             .or_insert_with(|| stats.clone());
                         self.monitoring.amount += (stats.amount - previous.amount).max(0.0);
                         self.monitoring.requests = match (stats.requests, previous.requests) {
@@ -253,8 +249,23 @@ impl Monitor {
                         self.stats = Some(stats);
                         recovered
                     }
-                    Reading::Tokens { session, .. } => {
-                        self.stats = Some(session);
+                    Reading::Quote(quote) if reply.job.model == self.model => {
+                        self.token_monitoring
+                            .entry(quote.currency)
+                            .or_insert(Stats {
+                                amount: 0.0,
+                                requests: Some(0),
+                            });
+                        false
+                    }
+                    Reading::Quote(_) => false,
+                    Reading::Tokens { currency, amount } => {
+                        let sum = self.token_monitoring.entry(currency).or_insert(Stats {
+                            amount: 0.0,
+                            requests: Some(0),
+                        });
+                        sum.amount += amount;
+                        sum.requests = Some(sum.requests.unwrap_or(0).saturating_add(1));
                         false
                     }
                 };
@@ -279,21 +290,40 @@ impl Monitor {
     /// Returns true when a billing/price query is submitted, so payment conversion can refresh.
     pub fn update(&mut self, observation: &Observation) -> bool {
         let target = observation.context();
+        if self.local {
+            for request in &observation.requests {
+                if self.received_requests.insert(request.sequence) {
+                    self.request_queue.push_back(Job {
+                        generation: self.generation,
+                        target: Some(SessionContext {
+                            session_id: request.session_id.clone(),
+                            credential_profile: request.credential_profile.clone(),
+                        }),
+                        model: request.model.clone(),
+                        request: Some(request.clone()),
+                    });
+                }
+            }
+        }
         if self.target != target {
             self.target = target;
             self.generation += 1;
-            self.pending = false;
+            if !self.local {
+                self.pending = false;
+            }
             self.stats = None;
-            self.error = None;
-            self.failures = 0;
-            self.next = None;
+            if !self.local {
+                self.error = None;
+                self.failures = 0;
+                self.next = None;
+            }
             self.revision = observation.revision;
             self.dirty = self.target.is_some();
         }
-        if self.target.is_some()
-            && (self.revision != observation.revision
-                || self.model != observation.model
-                || self.usage != observation.usage)
+        if (self.local || self.target.is_some())
+            && (self.model != observation.model
+                || !self.local
+                    && (self.revision != observation.revision || self.usage != observation.usage))
         {
             self.revision = observation.revision;
             self.dirty = true;
@@ -303,22 +333,34 @@ impl Monitor {
         while let Ok(reply) = self.replies.try_recv() {
             self.apply(reply);
         }
+        let retry_ready = self.next.is_none_or(|next| Instant::now() >= next);
         if !self.pending
-            && (self.dirty || self.next.is_some_and(|next| Instant::now() >= next))
-            && let Some(target) = &self.target
+            && retry_ready
+            && (!self.local || self.model.is_some() || !self.request_queue.is_empty())
+            && (self.dirty || !self.request_queue.is_empty() || self.next.is_some())
+            && (self.local || self.target.is_some())
         {
-            if self
-                .jobs
-                .send(Job {
-                    generation: self.generation,
-                    target: target.clone(),
-                    model: self.model.clone(),
-                    usage: self.usage.clone(),
+            let job = self
+                .request_queue
+                .front()
+                .map(|job| Job {
+                    generation: job.generation,
+                    target: job.target.clone(),
+                    model: job.model.clone(),
+                    request: job.request.clone(),
                 })
-                .is_ok()
-            {
+                .unwrap_or(Job {
+                    generation: self.generation,
+                    target: self.target.clone(),
+                    model: self.model.clone(),
+                    request: None,
+                });
+            let prefetch = job.request.is_none();
+            if self.jobs.send(job).is_ok() {
                 self.pending = true;
-                self.dirty = false;
+                if prefetch {
+                    self.dirty = false;
+                }
                 self.next = None;
                 return true;
             }
@@ -332,7 +374,9 @@ impl Monitor {
     fn status(&self) -> CostStatus {
         if self.error.is_some() {
             CostStatus::Reconnecting
-        } else if self.stats.is_none() {
+        } else if self.local && self.model.is_none() {
+            CostStatus::Connected
+        } else if !self.local && self.stats.is_none() {
             CostStatus::Connecting
         } else if self.reconnected {
             CostStatus::Reconnected
@@ -348,7 +392,12 @@ impl Monitor {
                 ..CostDisplay::default()
             };
         };
-        let currency = &self.config.billing_currency;
+        let Some(currency) = &self.config.billing_currency else {
+            return CostDisplay {
+                status: CostStatus::Unavailable,
+                ..CostDisplay::default()
+            };
+        };
         let prefix = if currency == "USD" { "$" } else { "" };
         let converted = payment
             .map(|payment| {
@@ -368,12 +417,78 @@ impl Monitor {
     }
 
     pub fn session_display(&self, payment: Option<&PaymentInfo>) -> CostDisplay {
+        if self.local {
+            return CostDisplay {
+                status: CostStatus::NotAvailable,
+                estimated: true,
+                ..Default::default()
+            };
+        }
         self.display_stats(self.stats.as_ref(), payment)
     }
 
     pub fn monitoring_display(&self, payment: Option<&PaymentInfo>) -> CostDisplay {
-        let stats = (!self.accounted.is_empty() || self.local_observed).then_some(&self.monitoring);
+        if self.local {
+            return self.display_tokens(&self.token_monitoring, payment);
+        }
+        let stats = (!self.accounted.is_empty()).then_some(&self.monitoring);
         self.display_stats(stats, payment)
+    }
+
+    fn display_tokens(
+        &self,
+        amounts: &BTreeMap<String, Stats>,
+        payment: Option<&PaymentInfo>,
+    ) -> CostDisplay {
+        let amount = (!amounts.is_empty()).then(|| {
+            amounts
+                .iter()
+                .map(|(currency, stats)| {
+                    let prefix = if currency == "USD" { "$" } else { "" };
+                    let converted = payment
+                        .filter(|_| self.config.billing_currency.as_ref() == Some(currency))
+                        .map(|payment| {
+                            format!(
+                                " ({:.6} {})",
+                                stats.amount * payment.exchange_rate,
+                                payment.payment_currency
+                            )
+                        })
+                        .unwrap_or_default();
+                    format!("{prefix}{:.8} {currency}{converted}", stats.amount)
+                })
+                .collect::<Vec<_>>()
+                .join(" + ")
+        });
+        let amount = amount.or_else(|| {
+            let currency = self.config.billing_currency.as_deref().unwrap_or("");
+            let prefix = if currency == "USD" { "$" } else { "" };
+            Some(if currency.is_empty() {
+                "0.00000000".into()
+            } else {
+                format!("{prefix}0.00000000 {currency}")
+            })
+        });
+        CostDisplay {
+            amount,
+            requests: Some(amounts.values().fold(0u64, |total, stats| {
+                total.saturating_add(stats.requests.unwrap_or(0))
+            })),
+            estimated: true,
+            status: self.status(),
+        }
+    }
+
+    pub fn billing_currencies(&self) -> String {
+        if self.local {
+            self.token_monitoring
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(" + ")
+        } else {
+            self.config.billing_currency.clone().unwrap_or_default()
+        }
     }
 
     pub fn session_line(&self, payment: Option<&PaymentInfo>) -> String {
@@ -391,14 +506,14 @@ impl Monitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dest::{SessionPricing, TokenPrices, TokenPricing};
+    use crate::dest::{SessionPricing, TokenPrices, TokenPricing, TokenQuote};
 
     struct FakeSessionDestination;
     impl Destination for FakeSessionDestination {
         fn config(&self) -> DestinationConfig {
             DestinationConfig {
                 name: "Fake".into(),
-                billing_currency: "USD".into(),
+                billing_currency: Some("USD".into()),
             }
         }
         fn pricing(&self) -> PricingInterface<'_> {
@@ -420,12 +535,15 @@ mod tests {
         Monitor::new(Arc::new(FakeSessionDestination))
     }
 
-    struct FakeTokenDestination;
+    #[derive(Default)]
+    struct FakeTokenDestination {
+        fail_next: std::sync::atomic::AtomicBool,
+    }
     impl Destination for FakeTokenDestination {
         fn config(&self) -> DestinationConfig {
             DestinationConfig {
                 name: "Token fake".into(),
-                billing_currency: "CNY".into(),
+                billing_currency: Some("CNY".into()),
             }
         }
         fn pricing(&self) -> PricingInterface<'_> {
@@ -433,36 +551,47 @@ mod tests {
         }
     }
     impl TokenPricing for FakeTokenDestination {
-        fn token_prices(&self, _: &SessionContext, model: &str) -> Result<TokenPrices> {
-            if !matches!(model, "test-model" | "cheap-model") {
+        fn token_prices(&self, _: Option<&SessionContext>, model: &str) -> Result<TokenQuote> {
+            if self
+                .fail_next
+                .swap(false, std::sync::atomic::Ordering::Relaxed)
+            {
+                return Err("temporary price source failure".into());
+            }
+            if !matches!(model, "test-model" | "cheap-model" | "other-currency") {
                 return Err("unknown model".into());
             }
             let multiplier = if model == "cheap-model" { 0.5 } else { 1.0 };
-            Ok(TokenPrices {
-                input: 2.0 * multiplier,
-                cached_input: 0.5 * multiplier,
-                cache_write_input: 2.0 * multiplier,
-                output: 10.0 * multiplier,
-                reasoning_output: 10.0 * multiplier,
+            Ok(TokenQuote {
+                currency: if model == "other-currency" {
+                    "USD"
+                } else {
+                    "CNY"
+                }
+                .into(),
+                prices: TokenPrices {
+                    input: 2.0 * multiplier,
+                    cached_input: 0.5 * multiplier,
+                    cache_write_input: 2.0 * multiplier,
+                    output: 10.0 * multiplier,
+                    reasoning_output: 10.0 * multiplier,
+                },
             })
         }
     }
 
     #[test]
-    fn token_destination_estimates_both_totals_and_preserves_monitoring_across_switches() {
-        let mut monitor = Monitor::new(Arc::new(FakeTokenDestination));
-        let mut observation = Observation {
-            session_id: Some("a".into()),
-            model: Some("test-model".into()),
-            usage: Some(TokenUsage {
-                input_tokens: 1_000_000,
-                cached_input_tokens: 200_000,
-                output_tokens: 100_000,
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-        let observe = |monitor: &mut Monitor, observation: &Observation| {
+    fn estimated_monitor_prices_each_request_once_and_retries_its_original_model() {
+        let destination = Arc::new(FakeTokenDestination::default());
+        let mut monitor = Monitor::new(destination.clone());
+        let mut observation = Observation::default();
+        assert!(!monitor.update(&observation));
+        assert_eq!(monitor.session_line(None), "Not available");
+        assert_eq!(
+            monitor.monitoring_line(None),
+            "0.00000000 CNY | 0 Requests · Estimated · Connected"
+        );
+        let settle = |monitor: &mut Monitor, observation: &Observation| {
             assert!(monitor.update(observation));
             let reply = monitor
                 .replies
@@ -470,101 +599,58 @@ mod tests {
                 .unwrap();
             monitor.apply(reply);
         };
-        observe(&mut monitor, &observation);
-        assert_eq!(
-            monitor.session_line(None),
-            "2.70000000 CNY · Estimated · Connected"
-        );
-        assert_eq!(
-            monitor.monitoring_line(None),
-            "0.00000000 CNY · Estimated · Connected"
-        );
-        observation.usage.as_mut().unwrap().input_tokens += 500_000;
-        observation.revision += 1;
-        observe(&mut monitor, &observation);
-        assert!((monitor.monitoring.amount - 1.0).abs() < 1e-10);
-        // A completion event with unchanged totals must not charge again.
-        observation.revision += 1;
-        observe(&mut monitor, &observation);
-        assert!((monitor.monitoring.amount - 1.0).abs() < 1e-10);
-        observation.session_id = Some("b".into());
-        observation.usage = Some(TokenUsage {
-            input_tokens: 500_000,
-            ..Default::default()
-        });
-        observe(&mut monitor, &observation);
-        assert!((monitor.monitoring.amount - 1.0).abs() < 1e-10);
-        observation.session_id = Some("a".into());
-        observation.usage = Some(TokenUsage {
-            input_tokens: 2_000_000,
-            cached_input_tokens: 200_000,
-            output_tokens: 100_000,
-            ..Default::default()
-        });
-        observe(&mut monitor, &observation);
-        assert_eq!(
-            monitor.session_line(None),
-            "4.70000000 CNY · Estimated · Connected"
-        );
-        assert_eq!(
-            monitor.monitoring_line(None),
-            "2.00000000 CNY · Estimated · Connected"
-        );
-        assert!(!monitor.monitoring_line(None).contains("Requests"));
-        // A price lookup failure must not advance the worker's baseline.
-        observation.model = Some("unknown".into());
-        observation.usage.as_mut().unwrap().input_tokens += 500_000;
-        observe(&mut monitor, &observation);
-        assert!(monitor.error.as_ref().unwrap().contains("unknown model"));
         observation.model = Some("test-model".into());
-        observe(&mut monitor, &observation);
-        assert_eq!(
-            monitor.monitoring_line(None),
-            "3.00000000 CNY · Estimated · Reconnected"
-        );
-        observation.model = Some("cheap-model".into());
-        observation.usage.as_mut().unwrap().input_tokens += 500_000;
-        observe(&mut monitor, &observation);
-        assert_eq!(
-            monitor.session_line(None),
-            "6.20000000 CNY · Estimated · Reconnected"
-        );
-        assert_eq!(
-            monitor.monitoring_line(None),
-            "3.50000000 CNY · Estimated · Reconnected"
-        );
-    }
-
-    #[test]
-    fn late_token_reply_adds_run_cost_without_overwriting_current_session() {
-        let mut monitor = Monitor::new(Arc::new(FakeTokenDestination));
-        monitor.target = Some(SessionContext {
-            session_id: "new".into(),
+        settle(&mut monitor, &observation);
+        let request = |sequence, model: &str| TokenRequest {
+            sequence,
+            session_id: "a".into(),
             credential_profile: None,
-        });
-        monitor.generation = 2;
-        monitor.pending = true;
-        monitor.apply(Reply {
-            job: Job {
-                generation: 1,
-                target: SessionContext {
-                    session_id: "old".into(),
-                    credential_profile: None,
-                },
-                model: None,
-                usage: None,
+            model: Some(model.into()),
+            usage: TokenUsage {
+                input_tokens: 1_000_000,
+                ..Default::default()
             },
-            result: Ok(Reading::Tokens {
-                session: Stats {
-                    amount: 20.0,
-                    requests: None,
-                },
-                increment: 0.5,
-            }),
-        });
-        assert_eq!(monitor.monitoring.amount, 0.5);
-        assert!(monitor.stats.is_none());
-        assert!(monitor.pending);
+        };
+        // Both responses arrive before the next UI refresh; neither may be merged or repriced.
+        observation.requests = vec![request(1, "test-model"), request(2, "cheap-model")];
+        settle(&mut monitor, &observation);
+        settle(&mut monitor, &observation);
+        assert_eq!(
+            monitor.monitoring_line(None),
+            "3.00000000 CNY | 2 Requests · Estimated · Connected"
+        );
+        assert!(!monitor.update(&observation));
+        destination
+            .fail_next
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        observation.requests.push(request(3, "test-model"));
+        settle(&mut monitor, &observation);
+        assert_eq!(monitor.token_monitoring["CNY"].amount, 3.0);
+        assert_eq!(monitor.token_monitoring["CNY"].requests, Some(2));
+        observation.model = Some("cheap-model".into());
+        observation.session_id = Some("other-session".into());
+        assert!(!monitor.update(&observation));
+        assert_eq!(
+            monitor.request_queue.front().unwrap().model.as_deref(),
+            Some("test-model")
+        );
+        // Retry the original response after a temporary source failure.
+        monitor.next = Some(Instant::now());
+        settle(&mut monitor, &observation);
+        assert_eq!(
+            monitor.monitoring_line(None),
+            "5.00000000 CNY | 3 Requests · Estimated · Reconnected"
+        );
+        assert_eq!(monitor.session_line(None), "Not available");
+        // The current model still receives its price prefetch after older responses settle.
+        settle(&mut monitor, &observation);
+        assert_eq!(monitor.monitoring_display(None).requests, Some(3));
+        observation.requests.push(request(4, "other-currency"));
+        settle(&mut monitor, &observation);
+        assert_eq!(
+            monitor.monitoring_line(None),
+            "5.00000000 CNY + $2.00000000 USD | 4 Requests · Estimated · Reconnected"
+        );
     }
 
     #[test]
@@ -630,8 +716,8 @@ mod tests {
         let job = Job {
             generation: monitor.generation,
             model: None,
-            usage: None,
-            target: monitor.target.clone().unwrap(),
+            request: None,
+            target: monitor.target.clone(),
         };
         monitor.apply(Reply {
             job,
@@ -703,11 +789,11 @@ mod tests {
         let job = || Job {
             generation: 0,
             model: None,
-            usage: None,
-            target: SessionContext {
+            request: None,
+            target: Some(SessionContext {
                 session_id: "chat".into(),
                 credential_profile: None,
-            },
+            }),
         };
         m.apply(Reply {
             job: job(),
@@ -785,11 +871,11 @@ mod tests {
             job: Job {
                 generation: 1,
                 model: None,
-                usage: None,
-                target: SessionContext {
+                request: None,
+                target: Some(SessionContext {
                     session_id: "old".into(),
                     credential_profile: None,
-                },
+                }),
             },
             result: Ok(Reading::Session(
                 Stats {
@@ -810,8 +896,8 @@ mod tests {
             job: Job {
                 generation: 1,
                 model: None,
-                usage: None,
-                target: monitor.target.clone().unwrap(),
+                request: None,
+                target: monitor.target.clone(),
             },
             result: Ok(Reading::Session(
                 Stats {

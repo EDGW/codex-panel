@@ -20,6 +20,7 @@ pub struct BillingDisplay {
     pub billing_currency: Option<String>,
     pub conversion: ConversionDisplay,
     pub settings_ui: Option<Arc<dyn crate::dest::DestinationSettings>>,
+    pub display_ui: Option<Arc<dyn crate::dest::DestinationDisplay>>,
 }
 
 struct DestinationMonitor {
@@ -36,6 +37,8 @@ pub struct Billing {
     selected_profile: Option<Option<String>>,
     selection: Result<(String, Option<String>), String>,
     api_url: String,
+    configured_model: Option<String>,
+    implicit_request_profiles: HashMap<u64, Option<String>>,
 }
 
 impl Billing {
@@ -54,11 +57,14 @@ impl Billing {
             selected_profile: None,
             selection: Err("Connecting...".into()),
             api_url: String::new(),
+            configured_model: None,
+            implicit_request_profiles: HashMap::new(),
         }
     }
 
     fn select(&mut self, profile: Option<&str>) -> Result<(String, Option<String>), String> {
         self.api_url.clear();
+        self.configured_model = self.credentials.configured_model()?;
         let profile = self.credentials.profile(profile)?;
         let url = self.credentials.api_url(Some(&profile))?;
         self.api_url = url.clone();
@@ -111,25 +117,51 @@ impl Billing {
             .monitors
             .get_mut(id)
             .expect("selected destination was created");
+        let model = session
+            .model
+            .clone()
+            .or_else(|| self.configured_model.clone());
         let observation = Observation {
             session_id: session.thread_id.clone(),
             credential_profile: id.1.clone(),
-            model: session.model.clone(),
+            model: model.clone(),
             usage: session.token_usage.clone(),
+            requests: session
+                .requests
+                .iter()
+                .filter_map(|request| {
+                    // Resolve an implicit profile once; switching destinations must not
+                    // assign an already observed response to another credential profile.
+                    let profile = request.credential_profile.clone().or_else(|| {
+                        self.implicit_request_profiles
+                            .entry(request.sequence)
+                            .or_insert_with(|| id.1.clone())
+                            .clone()
+                    });
+                    (profile == id.1).then(|| {
+                        let mut request = request.clone();
+                        request.credential_profile = profile;
+                        request
+                    })
+                })
+                .collect(),
             revision: session.cost_revision,
         };
         let queried = monitor.costs.update(&observation);
         monitor.exchange.update(queried);
         let conversion = monitor.exchange.display();
+        let warnings = self.config.instance(&id.0).factory.warnings().join(" | ");
         let detail_warning = session
             .error
             .as_ref()
             .is_some_and(|error| !error.is_empty())
             || !monitor.costs.detail().is_empty()
-            || conversion.warning;
+            || conversion.warning
+            || !warnings.is_empty();
         BillingDisplay {
             api_url: self.api_url.clone(),
-            billing_currency: Some(monitor.destination.config().billing_currency),
+            billing_currency: Some(monitor.costs.billing_currencies())
+                .filter(|currency| !currency.is_empty()),
             conversion,
             destination: Some(format!(
                 "{} [{} · {}]",
@@ -138,6 +170,16 @@ impl Billing {
                 self.config.instance(&id.0).kind
             )),
             settings_ui: monitor.settings_ui.clone(),
+            display_ui: monitor.destination.display(&crate::dest::DisplayContext {
+                session: session
+                    .thread_id
+                    .as_ref()
+                    .map(|session_id| crate::dest::SessionContext {
+                        session_id: session_id.clone(),
+                        credential_profile: id.1.clone(),
+                    }),
+                model,
+            }),
             session: monitor
                 .costs
                 .session_display(monitor.exchange.payment.as_ref()),
@@ -149,6 +191,7 @@ impl Billing {
                 session.error.as_deref().unwrap_or(""),
                 monitor.costs.detail(),
                 &monitor.exchange.detail(),
+                &warnings,
             ]
             .into_iter()
             .filter(|detail| !detail.is_empty())
@@ -161,12 +204,12 @@ impl Billing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ConfigPaths, load_with_registry};
+    use crate::config::Instance;
     use crate::conversion::PaymentConversion;
     use crate::dest::{
         Destination, DestinationConfig, PaymentInfo, PricingInterface, SessionContext,
         SessionPricing, Stats,
-        registry::{DestinationFactory, Registry},
+        registry::{DestinationFactory, DestinationMappings},
     };
     use std::sync::Mutex;
     use std::time::{Duration, Instant};
@@ -178,6 +221,10 @@ mod tests {
         amounts: Amounts,
     }
     impl DestinationFactory for TestFactory {
+        fn warnings(&self) -> Vec<&str> {
+            vec!["test destination limitation"]
+        }
+
         fn create(&self, context: CreateContext) -> Result<Arc<dyn Destination>, String> {
             Ok(Arc::new(TestDestination {
                 name: context.name,
@@ -189,7 +236,7 @@ mod tests {
         fn config(&self) -> DestinationConfig {
             DestinationConfig {
                 name: self.name.clone(),
-                billing_currency: "USD".into(),
+                billing_currency: Some("USD".into()),
             }
         }
         fn pricing(&self) -> PricingInterface<'_> {
@@ -214,6 +261,22 @@ mod tests {
             ))
         }
     }
+    struct FixedConversion;
+    impl PaymentConversion for FixedConversion {
+        fn payment_info(&self) -> Result<PaymentInfo, String> {
+            Ok(PaymentInfo {
+                payment_currency: "EUR".into(),
+                exchange_rate: 0.5,
+            })
+        }
+        fn initial_payment(&self) -> Result<Option<PaymentInfo>, String> {
+            self.payment_info().map(Some)
+        }
+        fn cache_duration(&self) -> Duration {
+            Duration::ZERO
+        }
+    }
+
     struct FailingConversion;
     impl PaymentConversion for FailingConversion {
         fn payment_info(&self) -> Result<PaymentInfo, String> {
@@ -256,36 +319,33 @@ mod tests {
             std::env::temp_dir().join(format!("ccp-billing-isolation-{}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(root.join("config.toml"), "model_provider='a1'\n[model_providers.a1]\nbase_url='https://a.example/v1'\n[model_providers.a2]\nbase_url='https://a.example/v1'\n[model_providers.b1]\nbase_url='https://b.example/v1'").unwrap();
-        let defaults = root.join("destinations.toml");
-        std::fs::write(&defaults, "version=1\n[[destinations]]\nid='a'\ntype='test'\nname='A'\napi_urls=['https://a.example/v1']\n[destinations.conversion]\ncurrency='EUR'\n[destinations.conversion.source]\ntype='value'\nvalue=0.5\n[[destinations]]\nid='b'\ntype='test'\nname='B'\napi_urls=['https://b.example/v1']").unwrap();
         let amounts: Amounts = Arc::new(Mutex::new(HashMap::from([
             (("A".into(), "a1".into()), 10.0),
             (("A".into(), "a2".into()), 50.0),
             (("B".into(), "b1".into()), 100.0),
         ])));
-        let source = amounts.clone();
-        let mut registry = Registry::new();
-        registry
-            .register("test", move |value, complete| {
-                assert!(value.as_table().unwrap().is_empty());
-                Ok(complete
-                    .then(|| Arc::new(TestFactory(source.clone())) as Arc<dyn DestinationFactory>))
-            })
-            .unwrap();
-        let mut config = load_with_registry(
-            &ConfigPaths {
-                defaults,
-                user: None,
-            },
-            &registry,
-        )
-        .unwrap();
-        config
-            .instances
-            .iter_mut()
-            .find(|i| i.id == "b")
-            .unwrap()
-            .conversion = Some(Arc::new(FailingConversion));
+        let mut mappings = DestinationMappings::default();
+        mappings.insert("https://a.example/v1", "a").unwrap();
+        mappings.insert("https://b.example/v1", "b").unwrap();
+        let config = LoadedConfig {
+            mappings,
+            instances: vec![
+                Instance {
+                    id: "a".into(),
+                    kind: "test".into(),
+                    name: "A".into(),
+                    factory: Arc::new(TestFactory(amounts.clone())),
+                    conversion: Some(Arc::new(FixedConversion)),
+                },
+                Instance {
+                    id: "b".into(),
+                    kind: "test".into(),
+                    name: "B".into(),
+                    factory: Arc::new(TestFactory(amounts.clone())),
+                    conversion: Some(Arc::new(FailingConversion)),
+                },
+            ],
+        };
         let mut billing =
             Billing::with_credentials(config, Arc::new(CodexCredentials::at(root.clone())));
         let mut session = Session {
@@ -299,13 +359,8 @@ mod tests {
                 .to_string()
                 .starts_with("$0.00000000 USD (0.000000 EUR)")
         );
-        assert!(
-            initial
-                .destination
-                .as_ref()
-                .unwrap()
-                .contains("A [a · test]")
-        );
+        assert!(initial.detail_warning);
+        assert_eq!(initial.detail, "test destination limitation");
         let mut observe = |profile: &str, name: &str, amount: f64, increment: f64| {
             amounts
                 .lock()

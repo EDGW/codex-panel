@@ -3,12 +3,7 @@ pub(crate) mod card;
 pub(crate) mod theme;
 mod view;
 
-use crate::{
-    AppResult,
-    billing::Billing,
-    runtime::RuntimeDir,
-    tmux::{PANEL_HEIGHT, Tmux},
-};
+use crate::{AppResult, billing::Billing, runtime::RuntimeDir, tmux::Tmux};
 use crossterm::{
     event::{
         self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, MouseButton,
@@ -106,11 +101,12 @@ pub(crate) fn run(
             billing_currency: display.billing_currency.as_deref(),
             conversion: &display.conversion,
             settings_ui: display.settings_ui.as_deref(),
+            display_ui: display.display_ui.as_deref(),
         };
         let height = if interaction.settings {
             view::settings_height(&view, size.width.min(u16::MAX as usize) as u16)
         } else {
-            PANEL_HEIGHT
+            view::display_height(&view, size.width.min(u16::MAX as usize) as u16)
         };
         if size.height != height && tmux.resize_panel(pane, height).is_ok() {
             size = tmux.pane_size(pane)?;

@@ -1,12 +1,12 @@
 //! Conversion configuration parsing; tagged-source boundaries stay here.
-use super::extraction::{
-    Condition, JsonExtractor, Scalar, XmlExtractor, validate_pointer, validate_xpath,
-};
-use super::http::HttpGet;
 use super::{
     Conversion, FixedSource, PaymentConversion, RetrievedSource, SourceDescription, positive,
 };
-use crate::dest::Result;
+use crate::Result;
+use crate::source::extraction::{
+    Condition, JsonExtractor, Scalar, XmlExtractor, validate_pointer, validate_xpath,
+};
+use crate::source::http::HttpGet;
 use crate::url::http_url;
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -379,7 +379,7 @@ fn retrieved(
     url: String,
     timeout: Option<u64>,
     cache: Option<u64>,
-    extractor: Box<dyn super::extraction::Extractor>,
+    extractor: Box<dyn crate::source::extraction::Extractor>,
     description: SourceDescription,
 ) -> Result<(Arc<dyn super::NumericSource>, Duration)> {
     let source = RetrievedSource {

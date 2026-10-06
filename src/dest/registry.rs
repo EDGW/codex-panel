@@ -11,6 +11,11 @@ pub struct CreateContext {
 
 pub trait DestinationFactory: Send + Sync {
     fn create(&self, context: CreateContext) -> Result<Arc<dyn Destination>>;
+
+    /// Nonfatal limitations to report at startup and for the selected instance.
+    fn warnings(&self) -> Vec<&str> {
+        Vec::new()
+    }
 }
 
 /// Partial validation accepts missing fields, but rejects supplied invalid fields.

@@ -1,5 +1,5 @@
 //! Independent retrieval. No extraction, billing or authentication knowledge.
-use crate::dest::Result;
+use crate::Result;
 use reqwest::Url;
 use reqwest::blocking::Client;
 use std::time::Duration;
@@ -18,8 +18,10 @@ impl HttpGet {
             .map_err(|_| "cannot initialize independent HTTP client")?;
         Ok(Self { client, url })
     }
+}
 
-    pub fn get(&self) -> Result<String> {
+impl super::Retrieval for HttpGet {
+    fn get(&self) -> Result<String> {
         let response = self
             .client
             .get(self.url.clone())

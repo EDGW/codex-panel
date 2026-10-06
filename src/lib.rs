@@ -4,6 +4,7 @@ pub mod conversion;
 pub mod cost;
 pub mod dest;
 pub mod exchange;
+pub mod source;
 
 mod billing;
 mod bridge;
@@ -17,4 +18,5 @@ mod session;
 mod tmux;
 mod url;
 
+pub type Result<T> = std::result::Result<T, String>;
 pub(crate) type AppResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;

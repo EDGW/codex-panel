@@ -1,8 +1,12 @@
 //! Format-specific expression validation, scalar extraction and success conditions.
-use crate::dest::Result;
+use crate::Result;
 use serde_json::Value as Json;
 use std::collections::BTreeMap;
 use sxd_xpath::{Context, Factory, Value};
+
+pub fn json<T: serde::de::DeserializeOwned>(body: &str) -> Result<T> {
+    serde_json::from_str(body).map_err(|error| format!("invalid JSON source response: {error}"))
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Scalar {
@@ -63,17 +67,27 @@ pub struct JsonExtractor {
     pub expect: Option<Condition>,
 }
 
+/// Parse once when several rates must be extracted from the same response.
+pub struct JsonDocument(Json);
+
+impl JsonDocument {
+    pub fn parse(body: &str) -> Result<Self> {
+        json(body).map(Self)
+    }
+
+    pub fn scalar(&self, pointer: &str) -> Result<Scalar> {
+        Scalar::from_json(
+            self.0
+                .pointer(pointer)
+                .ok_or_else(|| format!("JSON Pointer '{pointer}' matched no value"))?,
+        )
+    }
+}
+
 impl Extractor for JsonExtractor {
     fn extract(&self, body: &str) -> Result<Scalar> {
-        let document: Json =
-            serde_json::from_str(body).map_err(|_| "invalid JSON source response")?;
-        let select = |pointer: &str| {
-            Scalar::from_json(
-                document
-                    .pointer(pointer)
-                    .ok_or_else(|| format!("JSON Pointer '{pointer}' matched no value"))?,
-            )
-        };
+        let document = JsonDocument::parse(body)?;
+        let select = |pointer: &str| document.scalar(pointer);
         if let Some(expect) = &self.expect
             && select(&expect.expression)? != expect.equals
         {

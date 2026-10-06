@@ -32,6 +32,14 @@ impl CodexCredentials {
             std::env::var(name).ok()
         })
     }
+
+    pub fn configured_model(&self) -> Result<Option<String>> {
+        Ok(load_config(&self.home)?
+            .get("model")
+            .and_then(toml::Value::as_str)
+            .filter(|model| !model.trim().is_empty())
+            .map(str::to_owned))
+    }
 }
 
 impl Credentials for CodexCredentials {
@@ -120,7 +128,7 @@ fn key_from_config(
             .and_then(Value::as_str)
             .map(str::to_owned),
     )
-    .ok_or_else(|| "Codex auth has no API key; set PREVX_API_KEY for relay login".to_owned())
+    .ok_or_else(|| "Codex auth has no API key; set PREVX_API_KEY".to_owned())
 }
 
 #[cfg(test)]
@@ -148,12 +156,12 @@ mod tests {
     #[test]
     fn provider_specific_env_key_precedes_auth_file_and_missing_env_is_explicit() {
         let config: toml::Value =
-            "model_provider='relay'\n[model_providers.relay]\nenv_key='RELAY_KEY'"
+            "model_provider='custom'\n[model_providers.custom]\nenv_key='CUSTOM_KEY'"
                 .parse()
                 .unwrap();
         assert_eq!(
             key_from_config(Path::new("/nonexistent"), &config, None, |name| (name
-                == "RELAY_KEY")
+                == "CUSTOM_KEY")
                 .then(|| "test-key".into()))
             .unwrap(),
             "test-key"
@@ -161,7 +169,7 @@ mod tests {
         assert!(
             key_from_config(Path::new("/nonexistent"), &config, None, |_| None)
                 .unwrap_err()
-                .contains("env_key RELAY_KEY")
+                .contains("env_key CUSTOM_KEY")
         );
     }
 }

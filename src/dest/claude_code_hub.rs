@@ -108,7 +108,7 @@ impl Destination for ClaudeCodeHub {
     fn config(&self) -> DestinationConfig {
         DestinationConfig {
             name: self.name.clone(),
-            billing_currency: "USD".into(),
+            billing_currency: Some("USD".into()),
         }
     }
 
