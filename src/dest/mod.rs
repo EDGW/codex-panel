@@ -87,14 +87,10 @@ pub trait DestinationDisplay: Send + Sync {
     fn render(&self, frame: &mut ratatui::Frame<'_>, area: ratatui::layout::Rect);
 }
 
-/// The host supplies an area; the destination owns its widgets, layout and input.
+/// Read-only settings: the host supplies an area; the destination owns its widgets and layout.
 pub trait DestinationSettings: Send + Sync {
     fn height(&self, width: u16) -> u16;
     fn render(&self, frame: &mut ratatui::Frame<'_>, area: ratatui::layout::Rect);
-    fn handle(&self, _event: &crossterm::event::Event) {}
-    fn save(&self) -> Result<()> {
-        Ok(())
-    }
 }
 
 /// Exactly two capabilities; each variant requires its corresponding implementation.

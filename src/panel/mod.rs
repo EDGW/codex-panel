@@ -135,17 +135,8 @@ pub(crate) fn run(
             std::thread::sleep(Duration::from_millis(250));
         } else if event::poll(Duration::from_millis(250))? {
             let was_settings = interaction.settings;
-            let event = event::read()?;
-            if was_settings && let Some(ui) = display.settings_ui.as_ref() {
-                ui.handle(&event);
-            }
-            interaction.handle(event.clone());
+            interaction.handle(event::read()?);
             if was_settings && !interaction.settings {
-                if !matches!(event, Event::Key(key) if key.code == KeyCode::Esc)
-                    && let Some(ui) = display.settings_ui.as_ref()
-                {
-                    ui.save()?;
-                }
                 tmux.focus(false, pane)?;
             }
         }
