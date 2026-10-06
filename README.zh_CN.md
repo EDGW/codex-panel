@@ -8,7 +8,21 @@
 
 目前支持基于 [Claude Code Hub](https://github.com/ding113/claude-code-hub) 的账单平台，可通过固定值、JSON 或 XML 来源将账单金额换算成付款币种。
 
-## 构建与使用
+## 下载与使用
+
+Apple Silicon Mac 用户可从 [GitHub Releases](https://github.com/EDGW/codex-panel/releases) 下载 `codex-panel-aarch64-apple-darwin.tar.gz`。安装 tmux 和 Codex CLI 后，解压并运行：
+
+```sh
+tar -xzf codex-panel-aarch64-apple-darwin.tar.gz
+cd codex-panel-aarch64-apple-darwin
+./codex-panel
+```
+
+压缩包包含可执行文件和默认的 `destinations.toml`，移动时请保持两者在同一目录。只有从源码构建时才需要 Rust。每个发布版本还提供 `.tar.gz.sha256` 校验文件。
+
+发布 GitHub Release 后，工作流会自动检出对应标签，编译 Apple Silicon 版本，并上传压缩包和校验文件。保存为草稿不会触发构建。
+
+## 从源码构建
 
 需要 Rust 工具链、tmux 和 Codex CLI。Codex 需支持 `--remote unix://` 和 daemon，已验证版本为 0.159.3。
 

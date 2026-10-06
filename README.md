@@ -8,7 +8,21 @@ Adds a cost panel to Codex CLI: the native interface stays at the top, while the
 
 Currently supports billing platforms based on [Claude Code Hub](https://github.com/ding113/claude-code-hub). Billing amounts can be converted to a payment currency using a fixed value, a JSON source, or an XML source.
 
-## Build and Usage
+## Download and Usage
+
+On Apple Silicon Macs, download `codex-panel-aarch64-apple-darwin.tar.gz` from [GitHub Releases](https://github.com/EDGW/codex-panel/releases). Install tmux and Codex CLI, then extract and run:
+
+```sh
+tar -xzf codex-panel-aarch64-apple-darwin.tar.gz
+cd codex-panel-aarch64-apple-darwin
+./codex-panel
+```
+
+The archive includes the executable and its default `destinations.toml`; keep them together. Rust is only required when building from source. Each release also includes a `.tar.gz.sha256` checksum file.
+
+Publishing a GitHub Release automatically runs the release workflow against its tag, builds the Apple Silicon executable, and uploads the archive and checksum. Draft releases do not trigger the build.
+
+## Build from Source
 
 Requires the Rust toolchain, tmux, and Codex CLI. Codex must support `--remote unix://` and the daemon; version 0.159.3 has been verified.
 

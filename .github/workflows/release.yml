@@ -1,0 +1,56 @@
+name: Release macOS Apple Silicon
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  macos-apple-silicon:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Run unit tests
+        run: cargo test --locked --lib --bins
+
+      - name: Build Apple Silicon executable
+        run: cargo build --locked --release --target aarch64-apple-darwin
+
+      - name: Package release
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="target/aarch64-apple-darwin/release/codex-panel"
+          test "$(lipo -archs "$binary")" = "arm64"
+          package="codex-panel-aarch64-apple-darwin"
+          mkdir -p "dist/$package"
+          cp "$binary" destinations.toml README.md README.zh_CN.md LICENSE "dist/$package/"
+          tar -czf "dist/$package.tar.gz" -C dist "$package"
+          cd dist
+          shasum -a 256 "$package.tar.gz" > "$package.tar.gz.sha256"
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            dist/codex-panel-aarch64-apple-darwin.tar.gz \
+            dist/codex-panel-aarch64-apple-darwin.tar.gz.sha256 \
+            --clobber
