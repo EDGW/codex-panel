@@ -32,7 +32,7 @@ cp destinations.toml target/release/destinations.toml
 ./target/release/codex-panel
 ```
 
-When moving the program, keep `destinations.toml` beside the executable. All startup arguments are passed directly to Codex.
+When moving the program, keep `destinations.toml` beside the executable. When launched through a symlink, configuration is read beside the resolved executable. Run `codex-panel --panel-version` to print the panel version; other startup arguments are passed directly to Codex.
 
 Codex opens in the working directory where you run `codex-panel`. Run the executable from your project directory, or use `-C /path/to/project` / `--cd /path/to/project` to select another directory.
 

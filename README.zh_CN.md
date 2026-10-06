@@ -32,7 +32,7 @@ cp destinations.toml target/release/destinations.toml
 ./target/release/codex-panel
 ```
 
-移动程序时，将 `destinations.toml` 一起放在可执行文件旁。启动参数直接传给 Codex。
+移动程序时，将 `destinations.toml` 一起放在可执行文件旁。通过 symlink 启动时，配置从解析后的实际可执行文件所在目录读取。运行 `codex-panel --panel-version` 可查看面板版本，其余启动参数直接传给 Codex。
 
 Codex 默认在运行 `codex-panel` 时的当前工作目录中打开。可在项目目录中运行可执行文件，或通过 `-C /path/to/project` / `--cd /path/to/project` 指定其他目录。
 

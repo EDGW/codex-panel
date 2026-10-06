@@ -82,16 +82,22 @@ pub fn discover_at(
     home: &Path,
     development: bool,
 ) -> Result<ConfigPaths> {
-    let defaults = defaults_override.unwrap_or_else(|| {
-        if development {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("destinations.toml")
-        } else {
+    let defaults = match defaults_override {
+        Some(path) => path,
+        None if development => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("destinations.toml"),
+        None => {
+            let executable = std::fs::canonicalize(executable).map_err(|e| {
+                format!(
+                    "{}: cannot resolve executable path: {e}",
+                    executable.display()
+                )
+            })?;
             executable
                 .parent()
                 .unwrap_or(Path::new(""))
                 .join("destinations.toml")
         }
-    });
+    };
     let defaults = std::fs::canonicalize(&defaults).map_err(|e| {
         format!(
             "{}: distribution defaults missing or unreadable; set CC_PANEL_DEFAULTS_CONFIG: {e}",
@@ -391,4 +397,56 @@ pub fn load_with_registry(paths: &ConfigPaths, registry: &Registry) -> Result<Lo
         instances,
         mappings,
     })
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::symlink;
+
+    #[test]
+    fn release_defaults_follow_executable_symlinks_and_respect_overrides() {
+        struct TestDir(PathBuf);
+        impl Drop for TestDir {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let dir = TestDir(
+            std::env::temp_dir().join(format!("codex-panel-discovery-{}", std::process::id())),
+        );
+        let distribution = dir.0.join("distribution");
+        let bin = dir.0.join("bin");
+        std::fs::create_dir_all(&distribution).unwrap();
+        std::fs::create_dir(&bin).unwrap();
+        let executable = distribution.join("codex-panel");
+        std::fs::write(&executable, "").unwrap();
+        let defaults = distribution.join("destinations.toml");
+        std::fs::write(&defaults, "version = 1\n").unwrap();
+        // A configuration beside the symlink must not hide the distribution file.
+        std::fs::write(bin.join("destinations.toml"), "invalid TOML").unwrap();
+        symlink("../distribution/codex-panel", bin.join("panel-link")).unwrap();
+        symlink("panel-link", bin.join("codex-panel")).unwrap();
+
+        for path in [&executable, &bin.join("codex-panel")] {
+            let paths = discover_at(None, None, path, &dir.0, false).unwrap();
+            assert_eq!(paths.defaults, std::fs::canonicalize(&defaults).unwrap());
+            assert!(paths.user.is_none());
+            assert!(load(&paths).unwrap().instances.is_empty());
+        }
+        let override_path = dir.0.join("override.toml");
+        std::fs::write(&override_path, "version = 1\n").unwrap();
+        let paths = discover_at(
+            Some(override_path.clone()),
+            None,
+            &bin.join("codex-panel"),
+            &dir.0,
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            paths.defaults,
+            std::fs::canonicalize(override_path).unwrap()
+        );
+    }
 }

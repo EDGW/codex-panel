@@ -1,4 +1,4 @@
-//! Application composition and process orchestration. Public argv always belongs to Codex.
+//! Application composition and process orchestration. Arguments other than the panel version query belong to Codex.
 use crate::{
     AppResult, codex, config, panel,
     runtime::RuntimeDir,
@@ -32,6 +32,10 @@ pub fn run(args: Vec<OsString>) -> AppResult<ExitCode> {
         }
         Some(_) => Err("Invalid internal panel process kind".into()),
         None => {
+            if args.len() == 1 && args[0] == "--panel-version" {
+                println!("codex-panel v{}", env!("CARGO_PKG_VERSION"));
+                return Ok(ExitCode::SUCCESS);
+            }
             // Preserve native pipes, help output and exec mode outside an interactive terminal.
             if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
                 return Ok(exit_code(codex::passthrough(&args)?));
