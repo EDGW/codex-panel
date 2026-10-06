@@ -80,6 +80,7 @@ impl Observation {
     }
 }
 
+#[derive(Clone)]
 struct Job {
     generation: u64,
     target: Option<SessionContext>,
@@ -96,6 +97,16 @@ enum Reading {
 struct Reply {
     job: Job,
     result: Result<Reading>,
+}
+
+struct RequestFailure {
+    retry_at: Instant,
+    attempts: u32,
+    error: String,
+}
+
+fn retry_delay(failures: u32) -> Duration {
+    Duration::from_secs(1u64 << failures.min(6)).min(Duration::from_secs(60))
 }
 
 /// Price a single immutable response snapshot; never infer request usage from session totals.
@@ -135,6 +146,7 @@ pub struct Monitor {
     usage: Option<TokenUsage>,
     received_requests: HashSet<u64>,
     request_queue: VecDeque<Job>,
+    request_failures: BTreeMap<u64, RequestFailure>,
     dirty: bool,
     interrupted: bool,
     reconnected: bool,
@@ -195,6 +207,7 @@ impl Monitor {
             usage: None,
             received_requests: HashSet::new(),
             request_queue: VecDeque::new(),
+            request_failures: BTreeMap::new(),
             dirty: false,
             interrupted: false,
             reconnected: false,
@@ -214,8 +227,37 @@ impl Monitor {
             if reply.job.request.is_none() && (reply.job.model != self.model || !current) {
                 return;
             }
-            if reply.result.is_ok() && reply.job.request.is_some() {
-                self.request_queue.pop_front();
+            if let Some(request) = &reply.job.request {
+                match &reply.result {
+                    Ok(_) => {
+                        self.request_failures.remove(&request.sequence);
+                        self.request_queue.retain(|job| {
+                            job.request.as_ref().map(|request| request.sequence)
+                                != Some(request.sequence)
+                        });
+                    }
+                    Err(error) => {
+                        let attempts = self
+                            .request_failures
+                            .get(&request.sequence)
+                            .map_or(1, |failure| failure.attempts.saturating_add(1));
+                        self.request_failures.insert(
+                            request.sequence,
+                            RequestFailure {
+                                retry_at: Instant::now() + retry_delay(attempts),
+                                attempts,
+                                error: format!(
+                                    "Response {} (session {}, model {}): {error}",
+                                    request.sequence,
+                                    request.session_id,
+                                    request.model.as_deref().unwrap_or("unavailable")
+                                ),
+                            },
+                        );
+                        self.interrupted = true;
+                        return;
+                    }
+                }
             }
         } else {
             if !current {
@@ -270,19 +312,17 @@ impl Monitor {
                     }
                 };
                 self.reconnected |= self.interrupted || recovered;
-                self.error = None;
-                self.failures = 0;
-                self.next = None;
+                if reply.job.request.is_none() {
+                    self.error = None;
+                    self.failures = 0;
+                    self.next = None;
+                }
             }
             Err(error) => {
                 self.error = Some(error);
                 self.interrupted = true;
                 self.failures = self.failures.saturating_add(1);
-                self.next = Some(
-                    Instant::now()
-                        + Duration::from_secs(1u64 << self.failures.min(6))
-                            .min(Duration::from_secs(60)),
-                );
+                self.next = Some(Instant::now() + retry_delay(self.failures));
             }
         }
     }
@@ -333,35 +373,35 @@ impl Monitor {
         while let Ok(reply) = self.replies.try_recv() {
             self.apply(reply);
         }
-        let retry_ready = self.next.is_none_or(|next| Instant::now() >= next);
-        if !self.pending
-            && retry_ready
-            && (!self.local || self.model.is_some() || !self.request_queue.is_empty())
-            && (self.dirty || !self.request_queue.is_empty() || self.next.is_some())
-            && (self.local || self.target.is_some())
-        {
-            let job = self
-                .request_queue
-                .front()
-                .map(|job| Job {
-                    generation: job.generation,
-                    target: job.target.clone(),
-                    model: job.model.clone(),
-                    request: job.request.clone(),
-                })
-                .unwrap_or(Job {
-                    generation: self.generation,
-                    target: self.target.clone(),
-                    model: self.model.clone(),
-                    request: None,
-                });
+        let now = Instant::now();
+        let request = self.request_queue.iter().find(|job| {
+            job.request.as_ref().is_some_and(|request| {
+                self.request_failures
+                    .get(&request.sequence)
+                    .is_none_or(|failure| now >= failure.retry_at)
+            })
+        });
+        let refresh_ready = self.next.is_none_or(|next| now >= next)
+            && (self.dirty || self.next.is_some())
+            && if self.local {
+                self.model.is_some()
+            } else {
+                self.target.is_some()
+            };
+        if !self.pending && (request.is_some() || refresh_ready) {
+            let job = request.cloned().unwrap_or(Job {
+                generation: self.generation,
+                target: self.target.clone(),
+                model: self.model.clone(),
+                request: None,
+            });
             let prefetch = job.request.is_none();
             if self.jobs.send(job).is_ok() {
                 self.pending = true;
                 if prefetch {
                     self.dirty = false;
+                    self.next = None;
                 }
-                self.next = None;
                 return true;
             }
             self.error = Some("cost worker stopped".into());
@@ -372,7 +412,7 @@ impl Monitor {
     }
 
     fn status(&self) -> CostStatus {
-        if self.error.is_some() {
+        if !self.detail().is_empty() {
             CostStatus::Reconnecting
         } else if self.local && self.model.is_none() {
             CostStatus::Connected
@@ -500,7 +540,15 @@ impl Monitor {
     }
 
     pub fn detail(&self) -> &str {
-        self.error.as_deref().unwrap_or("")
+        self.error
+            .as_deref()
+            .or_else(|| {
+                self.request_failures
+                    .values()
+                    .next()
+                    .map(|failure| failure.error.as_str())
+            })
+            .unwrap_or("")
     }
 }
 #[cfg(test)]
@@ -629,21 +677,22 @@ mod tests {
         assert_eq!(monitor.token_monitoring["CNY"].requests, Some(2));
         observation.model = Some("cheap-model".into());
         observation.session_id = Some("other-session".into());
-        assert!(!monitor.update(&observation));
+        // Price prefetch for the new selection is independent of the failed response.
+        settle(&mut monitor, &observation);
+        assert!(!monitor.detail().is_empty());
         assert_eq!(
             monitor.request_queue.front().unwrap().model.as_deref(),
             Some("test-model")
         );
         // Retry the original response after a temporary source failure.
-        monitor.next = Some(Instant::now());
+        monitor.request_failures.get_mut(&3).unwrap().retry_at = Instant::now();
         settle(&mut monitor, &observation);
         assert_eq!(
             monitor.monitoring_line(None),
             "5.00000000 CNY | 3 Requests · Estimated · Reconnected"
         );
         assert_eq!(monitor.session_line(None), "Not available");
-        // The current model still receives its price prefetch after older responses settle.
-        settle(&mut monitor, &observation);
+        assert!(!monitor.update(&observation));
         assert_eq!(monitor.monitoring_display(None).requests, Some(3));
         observation.requests.push(request(4, "other-currency"));
         settle(&mut monitor, &observation);
@@ -651,6 +700,80 @@ mod tests {
             monitor.monitoring_line(None),
             "5.00000000 CNY + $2.00000000 USD | 4 Requests · Estimated · Reconnected"
         );
+    }
+
+    #[test]
+    fn failed_responses_do_not_block_other_models_or_prefetch_and_recover_once() {
+        let destination = Arc::new(FakeTokenDestination::default());
+        let mut monitor = Monitor::new(destination.clone());
+        let request = |sequence, model| TokenRequest {
+            sequence,
+            session_id: "chat".into(),
+            credential_profile: None,
+            model,
+            usage: TokenUsage {
+                input_tokens: 1_000_000,
+                ..Default::default()
+            },
+        };
+        let mut observation = Observation {
+            session_id: Some("chat".into()),
+            model: Some("cheap-model".into()),
+            requests: vec![
+                request(1, Some("unknown".into())),
+                request(2, None),
+                request(3, Some("test-model".into())),
+            ],
+            ..Default::default()
+        };
+        let settle = |monitor: &mut Monitor, observation: &Observation| {
+            assert!(monitor.update(observation));
+            let reply = monitor
+                .replies
+                .recv_timeout(Duration::from_secs(2))
+                .unwrap();
+            let model = reply.job.model.clone();
+            monitor.apply(reply);
+            model
+        };
+        assert_eq!(
+            settle(&mut monitor, &observation).as_deref(),
+            Some("unknown")
+        );
+        assert_eq!(settle(&mut monitor, &observation), None);
+        assert_eq!(
+            settle(&mut monitor, &observation).as_deref(),
+            Some("test-model")
+        );
+        assert_eq!(
+            settle(&mut monitor, &observation).as_deref(),
+            Some("cheap-model")
+        );
+        let costs = monitor.monitoring_display(None);
+        assert_eq!(costs.requests, Some(1));
+        assert_eq!(costs.status, CostStatus::Reconnecting);
+        assert!(monitor.detail().contains("unknown model"));
+        assert!(!monitor.update(&observation));
+        // A transient failure must preserve its original request and stay visible
+        // even when subsequent responses are successfully priced.
+        destination
+            .fail_next
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        observation
+            .requests
+            .push(request(4, Some("test-model".into())));
+        settle(&mut monitor, &observation);
+        observation
+            .requests
+            .push(request(5, Some("cheap-model".into())));
+        settle(&mut monitor, &observation);
+        assert_eq!(monitor.monitoring_display(None).requests, Some(2));
+        monitor.request_failures.get_mut(&4).unwrap().retry_at = Instant::now();
+        settle(&mut monitor, &observation);
+        assert_eq!(monitor.monitoring_display(None).requests, Some(3));
+        assert_eq!(monitor.token_monitoring["CNY"].amount, 5.0);
+        assert!(!monitor.update(&observation));
+        assert!(monitor.detail().contains("unknown model"));
     }
 
     #[test]
