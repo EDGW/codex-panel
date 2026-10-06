@@ -134,7 +134,7 @@ fn select_defaults(candidates: &[PathBuf]) -> Result<PathBuf> {
         }
     }
     Err(format!(
-        "distribution defaults not found; set CC_PANEL_DEFAULTS_CONFIG; searched: {}",
+        "distribution defaults missing; set CC_PANEL_DEFAULTS_CONFIG; searched: {}",
         candidates
             .iter()
             .map(|p| p.display().to_string())
