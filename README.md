@@ -10,7 +10,18 @@ Supports Linux x86_64 and ARM64, and macOS Apple Silicon. Currently supports bil
 
 ## Download and Usage
 
-Homebrew is the recommended installation method for Linux and macOS, with upgrades managed by `brew upgrade codex-panel`. The tap is maintained in a separate repository; its installation instructions will be linked here once published.
+Homebrew is the recommended installation method for Linux and macOS:
+
+```sh
+brew install EDGW/tap/codex-panel
+```
+
+Upgrade with:
+
+```sh
+brew update
+brew upgrade codex-panel
+```
 
 Install Codex CLI separately. It must support `--remote unix://` and the daemon; version 0.159.3 has been verified.
 

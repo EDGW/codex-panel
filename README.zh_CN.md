@@ -10,7 +10,18 @@
 
 ## 下载与使用
 
-推荐在 Linux 和 macOS 上通过 Homebrew 安装，使用 `brew upgrade codex-panel` 升级。tap 在独立仓库维护，发布后会在这里补充安装说明链接。
+推荐在 Linux 和 macOS 上通过 Homebrew 安装：
+
+```sh
+brew install EDGW/tap/codex-panel
+```
+
+升级时运行：
+
+```sh
+brew update
+brew upgrade codex-panel
+```
 
 Codex CLI 需单独安装，需支持 `--remote unix://` 和 daemon，已验证版本为 0.159.3。
 
