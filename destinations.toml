@@ -1,0 +1,45 @@
+version = 1
+
+[[destinations]]
+id = "cc2"
+type = "claude-code-hub"
+name = "Clouder"
+api_urls = ["https://cc2.caaa.tech/v1"]
+
+[destinations.config]
+hub_url = "https://cc2.caaa.tech"
+
+[destinations.conversion]
+currency = "CNY"
+multiplier = 1.0
+
+[destinations.conversion.source]
+type = "json"
+url = "https://topup2.caaa.tech/api/topup/config"
+pointer = "/data/priceCnyPerUsd"
+cache_seconds = 300
+timeout_seconds = 10
+
+[destinations.conversion.source.expect]
+pointer = "/ok"
+equals = true
+
+[[destinations]]
+id = "cc3"
+type = "claude-code-hub"
+name = "Clouder"
+api_urls = ["https://cc3.caaa.tech/v1"]
+
+[destinations.config]
+hub_url = "https://cc3.caaa.tech"
+
+[destinations.conversion]
+currency = "CNY"
+multiplier = 1.0
+
+[destinations.conversion.source]
+type = "json"
+url = "https://topup3.caaa.tech/api/topup/config"
+pointer = "/data/priceCnyPerUsd"
+cache_seconds = 300
+timeout_seconds = 10

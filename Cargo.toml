@@ -1,0 +1,26 @@
+[package]
+name = "codex-panel"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+crossterm = "0.29"
+ratatui = { version = "0.30", default-features = false, features = [
+    "crossterm",
+    "unstable-rendered-line-info",
+] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "blocking",
+    "json",
+    "cookies",
+    "rustls-tls-native-roots",
+] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+toml = "0.8"
+tungstenite = "0.30.0"
+unicode-width = "0.2.2"
+sxd-document = "0.3.2"
+sxd-xpath = "0.4.2"
+terminal-colorsaurus = "1.0"
