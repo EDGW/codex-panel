@@ -110,3 +110,14 @@ Payment amount = billing amount × source value × `multiplier`. `currency` is t
 JSON/XML extraction must return a number or a numeric string. XPath node queries must match exactly one node. Both sources support `cache_seconds` (default: 300) and `timeout_seconds` (default: 10). XML namespace prefixes can be configured with `namespaces = { p = "namespace URI" }`.
 
 JSON/XML sources can include a success condition in `source`, such as `expect = { pointer = "/ok", equals = true }`; for XML, use `xpath` instead of `pointer`. Overrides that keep the same source type inherit the existing condition. Set `expect = false` to clear it.
+
+### Linux default configuration discovery
+
+`CC_PANEL_DEFAULTS_CONFIG` takes precedence. An empty value, missing file, or read failure is an error. When unset, release builds search in this order:
+
+1. `destinations.toml` beside the resolved executable.
+2. `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/destinations.toml`.
+3. `/usr/local/share/codex-panel/destinations.toml`.
+4. `/usr/share/codex-panel/destinations.toml`.
+
+The first existing file is selected. Unreadable files, broken symlinks, and invalid contents are errors. If none exist, the error lists the searched paths. User overrides still come from `CC_PANEL_CONFIG` or `~/.codex-panel/destinations.toml`; upgrades do not overwrite them. Development builds continue to use the project defaults.

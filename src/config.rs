@@ -83,6 +83,9 @@ pub fn discover_at(
     development: bool,
 ) -> Result<ConfigPaths> {
     let defaults = match defaults_override {
+        Some(path) if path.as_os_str().is_empty() => {
+            return Err("CC_PANEL_DEFAULTS_CONFIG must not be empty".into());
+        }
         Some(path) => path,
         None if development => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("destinations.toml"),
         None => {
@@ -92,10 +95,23 @@ pub fn discover_at(
                     executable.display()
                 )
             })?;
-            executable
+            let adjacent = executable
                 .parent()
                 .unwrap_or(Path::new(""))
-                .join("destinations.toml")
+                .join("destinations.toml");
+            let mut candidates = vec![adjacent];
+            if cfg!(target_os = "linux") {
+                let data_home = std::env::var_os("XDG_DATA_HOME")
+                    .filter(|value| !value.is_empty())
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| home.join(".local/share"));
+                candidates.extend([
+                    data_home.join("codex-panel/destinations.toml"),
+                    PathBuf::from("/usr/local/share/codex-panel/destinations.toml"),
+                    PathBuf::from("/usr/share/codex-panel/destinations.toml"),
+                ]);
+            }
+            select_defaults(&candidates)?
         }
     };
     let defaults = std::fs::canonicalize(&defaults).map_err(|e| {
@@ -119,6 +135,35 @@ pub fn discover_at(
             None
         };
     Ok(ConfigPaths { defaults, user })
+}
+
+fn select_defaults(candidates: &[PathBuf]) -> Result<PathBuf> {
+    for path in candidates {
+        // Inspect the entry itself so a broken symlink fails instead of falling through.
+        match std::fs::symlink_metadata(path) {
+            Ok(_) => {
+                std::fs::File::open(path).map_err(|e| {
+                    format!("{}: cannot read default configuration: {e}", path.display())
+                })?;
+                return Ok(path.clone());
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => {
+                return Err(format!(
+                    "{}: cannot inspect default configuration: {e}",
+                    path.display()
+                ));
+            }
+        }
+    }
+    Err(format!(
+        "distribution defaults not found; set CC_PANEL_DEFAULTS_CONFIG; searched: {}",
+        candidates
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))
 }
 
 #[derive(Deserialize)]
@@ -405,6 +450,35 @@ mod tests {
     use std::os::unix::fs::symlink;
 
     #[test]
+    fn fallback_uses_first_existing_file_and_reports_missing_paths() {
+        let root =
+            std::env::temp_dir().join(format!("codex-panel-fallback-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let candidates: Vec<_> = ["adjacent", "user", "local", "system"]
+            .iter()
+            .map(|name| root.join(name))
+            .collect();
+        let error = select_defaults(&candidates).unwrap_err();
+        for path in &candidates {
+            assert!(error.contains(&path.display().to_string()));
+        }
+        for path in candidates.iter().rev() {
+            std::fs::write(path, "version = 1\n").unwrap();
+            assert_eq!(select_defaults(&candidates).unwrap(), *path);
+        }
+        std::fs::write(&candidates[0], "invalid TOML").unwrap();
+        let paths = ConfigPaths {
+            defaults: select_defaults(&candidates).unwrap(),
+            user: None,
+        };
+        assert!(load(&paths).is_err());
+        std::fs::remove_file(&candidates[0]).unwrap();
+        symlink(root.join("missing"), &candidates[0]).unwrap();
+        assert!(select_defaults(&candidates).is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn release_defaults_follow_executable_symlinks_and_respect_overrides() {
         struct TestDir(PathBuf);
         impl Drop for TestDir {
@@ -448,5 +522,8 @@ mod tests {
             paths.defaults,
             std::fs::canonicalize(override_path).unwrap()
         );
+        for invalid in [PathBuf::new(), dir.0.join("missing.toml")] {
+            assert!(discover_at(Some(invalid), None, &executable, &dir.0, false).is_err());
+        }
     }
 }

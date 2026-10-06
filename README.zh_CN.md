@@ -48,7 +48,7 @@ Codex 默认在运行 `codex-panel` 时的当前工作目录中打开。可在�
 
 | 文件 | 用途 |
 | --- | --- |
-| `destinations.toml` | 默认配置；发布构建读取可执行文件旁的文件，开发构建读取项目目录中的文件 |
+| `destinations.toml` | 默认配置；发布构建优先读取实际可执行文件旁的文件，开发构建读取项目目录中的文件 |
 | `~/.codex-panel/destinations.toml` | 可选用户配置，需自行创建，按实例 `id` 覆盖默认值 |
 
 建议修改用户配置。覆盖已有实例时只需填写 `id` 和要修改的字段；表按字段合并，数组整体替换。改变实例 `type` 会替换其 `config`，改变转换来源 `type` 会替换整个 `source`。
@@ -110,3 +110,14 @@ value = 0.14
 JSON/XML 提取结果须为数字或数字字符串，XPath 节点查询须匹配一个节点。两者可设置 `cache_seconds`（默认 300）和 `timeout_seconds`（默认 10）；XML 可通过 `namespaces = { p = "命名空间 URI" }` 配置前缀。
 
 JSON/XML 可在 `source` 中添加成功条件，如 `expect = { pointer = "/ok", equals = true }`；XML 使用 `xpath` 替代 `pointer`。同类型覆盖会继承原条件，设置 `expect = false` 可清除。
+
+### Linux 默认配置查找
+
+`CC_PANEL_DEFAULTS_CONFIG` 优先级最高；已设置但为空、文件缺失或读取失败时直接报错。未设置时，发布构建按顺序查找：
+
+1. 实际可执行文件旁的 `destinations.toml`（解析软链接）。
+2. `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/destinations.toml`。
+3. `/usr/local/share/codex-panel/destinations.toml`。
+4. `/usr/share/codex-panel/destinations.toml`。
+
+使用第一个存在的文件；文件不可读、软链接损坏或内容错误时直接报错。全部缺失时列出查找路径。个人配置仍从 `CC_PANEL_CONFIG` 或 `~/.codex-panel/destinations.toml` 读取并合并，升级不会改写个人配置。
