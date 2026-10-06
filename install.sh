@@ -15,7 +15,7 @@ main() (
         shift 2
         ;;
       -h|--help)
-        printf 'Usage: bash install.sh [--version vVERSION]\nInstalls the latest Linux release by default, with codex-panel-remove.\n'
+        printf 'Usage: bash install.sh [--version vVERSION]\nInstalls the latest Linux release (including pre-releases) by default, with codex-panel-remove.\n'
         return
         ;;
       *) die "Unknown argument: $1" ;;
@@ -54,15 +54,26 @@ main() (
   done
 
   local asset="codex-panel-$target.tar.gz"
-  local base_url=https://github.com/EDGW/codex-panel/releases
-  if [ "$version" = latest ]; then
-    base_url="$base_url/latest/download"
-  else
-    base_url="$base_url/download/$version"
-  fi
   local work_dir
   work_dir=$(mktemp -d)
   trap 'rm -rf -- "$work_dir"' EXIT
+  if [ "$version" = latest ]; then
+    command -v python3 >/dev/null 2>&1 || die 'Required command not found: python3 (needed to select the latest release)'
+    # GitHub's /latest/download endpoint excludes pre-releases.
+    curl --fail --show-error --silent --location --retry 3 \
+      --output "$work_dir/releases.json" \
+      'https://api.github.com/repos/EDGW/codex-panel/releases?per_page=1'
+    version=$(python3 -c '
+import json, sys
+with open(sys.argv[1]) as source:
+    releases = json.load(source)
+if not releases:
+    sys.exit("No published releases found.")
+print(releases[0]["tag_name"])
+' "$work_dir/releases.json") || die 'Cannot determine the latest release; try --version vVERSION.'
+    [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.-]+)?$ ]] || die "Invalid release tag: $version"
+  fi
+  local base_url="https://github.com/EDGW/codex-panel/releases/download/$version"
   printf 'Downloading %s (%s)…\n' "$asset" "$version"
   curl --fail --show-error --location --retry 3 --output "$work_dir/$asset" "$base_url/$asset"
   curl --fail --show-error --location --retry 3 --output "$work_dir/$asset.sha256" "$base_url/$asset.sha256"
@@ -80,7 +91,7 @@ main() (
   local installed_version
   installed_version=$(env -u CC_PANEL_PROCESS_KIND "$work_dir/$package/codex-panel" --panel-version) || die 'The release executable cannot run on this system.'
   [[ "$installed_version" = 'codex-panel v'* ]] || die 'Unexpected release executable version.'
-  [ "$version" = latest ] || [ "$installed_version" = "codex-panel $version" ] || die 'The release executable does not match the requested version.'
+  [ "$installed_version" = "codex-panel $version" ] || die 'The release executable does not match the requested version.'
 
   local rc_file zdotdir="${ZDOTDIR:-$HOME}"
   [[ "$zdotdir" = /* ]] || die 'ZDOTDIR must be an absolute path.'

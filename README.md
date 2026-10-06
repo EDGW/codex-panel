@@ -16,7 +16,7 @@ Supports Linux x86_64 and ARM64, and macOS Apple Silicon. Currently supports bil
 curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash
 ```
 
-The installer detects x86_64 or ARM64, downloads the latest GitHub release, verifies its SHA-256 checksum, and installs for the current user without sudo. Linux releases require glibc 2.39 or newer. Install tmux, lsof, and Codex CLI separately.
+The installer detects x86_64 or ARM64, downloads the latest GitHub release (including pre-releases), verifies its SHA-256 checksum, and installs for the current user without sudo. Selecting the latest release requires Python 3; `--version` skips this requirement. Linux releases require glibc 2.39 or newer. Install tmux, lsof, and Codex CLI separately.
 
 The `codex-panel` and `codex-panel-remove` commands are placed in `~/.local/bin`; the executable and defaults are stored in `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/installation/`. If needed, the installer adds `~/.local/bin` to PATH in Bash, Zsh, and POSIX shell startup files. Open a new terminal or run the printed `export PATH=…` command to use them in your current terminal.
 

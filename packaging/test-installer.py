@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix="codex-panel-installer-") as directory:
     mocks = sandbox / "mocks"
     mocks.mkdir()
     executable(mocks / "mock", """#!/usr/bin/env python3
-import os, pathlib, shutil, sys
+import json, os, pathlib, shutil, sys
 command = pathlib.Path(sys.argv[0]).name
 if command == 'uname':
     print(os.environ.get('TEST_OS', 'Linux') if sys.argv[1] == '-s'
@@ -41,11 +41,15 @@ elif command == 'curl':
     if os.environ.get('TEST_DOWNLOAD_FAILURE'):
         sys.exit(22)
     url = sys.argv[-1]
-    name = url.rsplit('/', 1)[1]
-    version = (os.environ['TEST_LATEST'] if '/latest/download/' in url
-               else url.split('/download/', 1)[1].split('/', 1)[0])
-    source = pathlib.Path(os.environ['TEST_RELEASES']) / version / name
     destination = pathlib.Path(sys.argv[sys.argv.index('--output') + 1])
+    if url.startswith('https://api.github.com/'):
+        destination.write_text(json.dumps([
+            {'tag_name': os.environ['TEST_LATEST'], 'prerelease': True}
+        ]))
+        sys.exit(0)
+    name = url.rsplit('/', 1)[1]
+    version = url.split('/download/', 1)[1].split('/', 1)[0]
+    source = pathlib.Path(os.environ['TEST_RELEASES']) / version / name
     shutil.copyfile(source, destination)
     if os.environ.get('TEST_BAD_CHECKSUM') and name.endswith('.sha256'):
         destination.write_text('0' * 64 + '  ' + name[:-7] + '\\n')
