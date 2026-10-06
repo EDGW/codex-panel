@@ -20,7 +20,7 @@ cd codex-panel-aarch64-apple-darwin
 
 压缩包包含可执行文件和默认的 `destinations.toml`，移动时请保持两者在同一目录。只有从源码构建时才需要 Rust。每个发布版本还提供 `.tar.gz.sha256` 校验文件。
 
-发布 GitHub Release 后，工作流会自动检出对应标签，编译 Apple Silicon 版本，并上传压缩包和校验文件。保存为草稿不会触发构建。
+发布 GitHub Release 后，工作流会自动检出对应标签，编译 macOS Apple Silicon、Linux x86_64 和 ARM64 版本，并上传压缩包和校验文件。标签使用 `v版本号`，需与 `Cargo.toml` 一致。保存为草稿不会触发构建。
 
 ## 从源码构建
 
@@ -121,3 +121,16 @@ JSON/XML 可在 `source` 中添加成功条件，如 `expect = { pointer = "/ok"
 4. `/usr/share/codex-panel/destinations.toml`。
 
 使用第一个存在的文件；文件不可读、软链接损坏或内容错误时直接报错。全部缺失时列出查找路径。个人配置仍从 `CC_PANEL_CONFIG` 或 `~/.codex-panel/destinations.toml` 读取并合并，升级不会改写个人配置。
+
+### Linux 压缩包安装
+
+从 GitHub Releases 下载 `codex-panel-x86_64-unknown-linux-gnu.tar.gz`（x86_64）或 `codex-panel-aarch64-unknown-linux-gnu.tar.gz`（ARM64），以及对应的 `.sha256` 文件。Linux 包在 Ubuntu 24.04 上原生构建，支持 Ubuntu 24.04 或具有兼容系统库的发行版（glibc 2.39 或更新版本）。
+
+```sh
+sha256sum --check codex-panel-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar -xzf codex-panel-x86_64-unknown-linux-gnu.tar.gz
+cd codex-panel-x86_64-unknown-linux-gnu
+./codex-panel
+```
+
+ARM64 使用对应文件名。压缩包包含程序、默认配置、中英文说明和许可证；运行仍需 tmux 和 Codex CLI。手动安装时，可将程序放在 `~/.local/bin/codex-panel`，将默认配置放在 `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/destinations.toml`。升级时替换这两个文件，个人配置独立保留。

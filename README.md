@@ -20,7 +20,7 @@ cd codex-panel-aarch64-apple-darwin
 
 The archive includes the executable and its default `destinations.toml`; keep them together. Rust is only required when building from source. Each release also includes a `.tar.gz.sha256` checksum file.
 
-Publishing a GitHub Release automatically runs the release workflow against its tag, builds the Apple Silicon executable, and uploads the archive and checksum. Draft releases do not trigger the build.
+Publishing a GitHub Release automatically runs the release workflow against its tag, builds the macOS Apple Silicon and Linux x86_64/ARM64 executables, and uploads the archive and checksum. Draft releases do not trigger the build.
 
 ## Build from Source
 
@@ -121,3 +121,16 @@ JSON/XML sources can include a success condition in `source`, such as `expect = 
 4. `/usr/share/codex-panel/destinations.toml`.
 
 The first existing file is selected. Unreadable files, broken symlinks, and invalid contents are errors. If none exist, the error lists the searched paths. User overrides still come from `CC_PANEL_CONFIG` or `~/.codex-panel/destinations.toml`; upgrades do not overwrite them. Development builds continue to use the project defaults.
+
+### Linux archives
+
+Releases include `codex-panel-x86_64-unknown-linux-gnu.tar.gz` and `codex-panel-aarch64-unknown-linux-gnu.tar.gz`, each with a `.sha256` file. Linux packages are built natively on Ubuntu 24.04 and require Ubuntu 24.04 or a distribution with compatible system libraries (glibc 2.39 or newer). Release tags must be `vVERSION` matching `Cargo.toml`.
+
+```sh
+sha256sum --check codex-panel-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar -xzf codex-panel-x86_64-unknown-linux-gnu.tar.gz
+cd codex-panel-x86_64-unknown-linux-gnu
+./codex-panel
+```
+
+Use the corresponding filename for ARM64. Archives contain the executable, default configuration, both READMEs, and license. tmux and Codex CLI must be installed separately. For a manual installation, place the executable in `~/.local/bin/codex-panel` and defaults in `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/destinations.toml`. Upgrade by replacing these two files; keep personal overrides separate.
