@@ -53,8 +53,8 @@ Linux 包在 Ubuntu 24.04 上构建，需要兼容的系统库（glibc 2.39 或�
 从同一 Release 下载 `codex-panel_<版本>_amd64.deb` 或 `codex-panel_<版本>_arm64.deb` 及对应的 `.sha256` 文件。例如：
 
 ```sh
-sha256sum --check codex-panel_0.1.1_amd64.deb.sha256
-sudo apt install ./codex-panel_0.1.1_amd64.deb
+sha256sum --check codex-panel_0.1.2_amd64.deb.sha256
+sudo apt install ./codex-panel_0.1.2_amd64.deb
 codex-panel --panel-version
 ```
 

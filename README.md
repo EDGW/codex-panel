@@ -53,8 +53,8 @@ Linux packages are built on Ubuntu 24.04 and require compatible system libraries
 Download `codex-panel_<version>_amd64.deb` or `codex-panel_<version>_arm64.deb` and its `.sha256` file from the same release. For example:
 
 ```sh
-sha256sum --check codex-panel_0.1.1_amd64.deb.sha256
-sudo apt install ./codex-panel_0.1.1_amd64.deb
+sha256sum --check codex-panel_0.1.2_amd64.deb.sha256
+sudo apt install ./codex-panel_0.1.2_amd64.deb
 codex-panel --panel-version
 ```
 
