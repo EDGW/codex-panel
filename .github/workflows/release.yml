@@ -121,6 +121,45 @@ jobs:
           test "$("verify/$package/codex-panel" --panel-version)" = "codex-panel v$version"
           cmp "$package/destinations.toml" "verify/$package/destinations.toml"
 
+      - name: Install Debian packaging tools
+        run: sudo apt-get install -y dpkg-dev
+
+      - name: Build Debian package
+        env:
+          TARGET: ${{ matrix.target }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          bash packaging/package-deb.sh "target/$TARGET/release/codex-panel" "$version" "$ARCHITECTURE" dist
+          cd dist
+          sha256sum --check "codex-panel_${version}_${ARCHITECTURE}.deb.sha256"
+          test "$(dpkg-deb -f "codex-panel_${version}_${ARCHITECTURE}.deb" Architecture)" = "$ARCHITECTURE"
+          test "$(dpkg-deb -f "codex-panel_${version}_${ARCHITECTURE}.deb" Version)" = "$version"
+
+      - name: Verify Debian installation, upgrade and removal
+        env:
+          TARGET: ${{ matrix.target }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          bash packaging/package-deb.sh "target/$TARGET/release/codex-panel" "$version~upgrade-test" "$ARCHITECTURE" upgrade-test
+          mkdir -p "$HOME/.codex-panel"
+          printf 'version = 1\n# upgrade sentinel\n' > "$HOME/.codex-panel/destinations.toml"
+          cp "$HOME/.codex-panel/destinations.toml" user-config-before.toml
+          sudo apt-get install -y "$PWD/upgrade-test/codex-panel_${version}~upgrade-test_${ARCHITECTURE}.deb"
+          sudo apt-get install -y "$PWD/dist/codex-panel_${version}_${ARCHITECTURE}.deb"
+          test "$(dpkg-query -W -f='${Version}' codex-panel)" = "$version"
+          test "$(/usr/bin/codex-panel --panel-version)" = "codex-panel v$version"
+          cmp destinations.toml /usr/share/codex-panel/destinations.toml
+          cmp user-config-before.toml "$HOME/.codex-panel/destinations.toml"
+          test ! -e /usr/bin/destinations.toml
+          sudo apt-get remove -y codex-panel
+          test ! -e /usr/bin/codex-panel
+          test ! -e /usr/share/codex-panel/destinations.toml
+          cmp user-config-before.toml "$HOME/.codex-panel/destinations.toml"
+
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -131,4 +170,17 @@ jobs:
           gh release upload "$RELEASE_TAG" \
             "dist/codex-panel-$TARGET.tar.gz" \
             "dist/codex-panel-$TARGET.tar.gz.sha256" \
+            --clobber
+
+      - name: Upload Debian release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          gh release upload "$RELEASE_TAG" \
+            "dist/codex-panel_${version}_${ARCHITECTURE}.deb" \
+            "dist/codex-panel_${version}_${ARCHITECTURE}.deb.sha256" \
             --clobber
