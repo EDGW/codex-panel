@@ -1,7 +1,7 @@
 use crate::dest::{TokenRequest, TokenUsage};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Session {
@@ -70,6 +70,7 @@ pub struct Tracker {
     selected_sequence: u64,
     reads: HashMap<(u64, String), String>,
     last_usage: HashMap<String, Value>,
+    seen_usage: HashMap<String, HashSet<String>>,
     monitored_threads: HashMap<String, ThreadContext>,
     request_sequence: u64,
     turn_models: HashMap<(String, String), Option<String>>,
@@ -228,15 +229,41 @@ impl Tracker {
         {
             match message.get("method").and_then(Value::as_str) {
                 Some("thread/tokenUsage/updated") => {
-                    if let Some(usage) = message.pointer("/params/tokenUsage/total")
-                        && self.last_usage.get(thread_id) != Some(usage)
-                    {
+                    if let Some(usage) = message.pointer("/params/tokenUsage/total") {
                         let total = parse_usage(usage);
-                        if self.current.thread_id.as_deref() == Some(thread_id) {
+                        // Connections can replay an older response after newer ones arrive.
+                        // Deduplicate normalized cumulative snapshots across all connections.
+                        let snapshot = total
+                            .as_ref()
+                            .map(|total| {
+                                serde_json::to_string(total).expect("token counters serialize")
+                            })
+                            .unwrap_or_else(|| usage.to_string());
+                        if !self
+                            .seen_usage
+                            .entry(thread_id.to_owned())
+                            .or_default()
+                            .insert(snapshot)
+                        {
+                            return;
+                        }
+                        let previous = self.last_usage.get(thread_id).and_then(parse_usage);
+                        let latest = match (&total, &previous) {
+                            (Some(current), Some(previous)) => {
+                                current.input_tokens >= previous.input_tokens
+                                    && current.cached_input_tokens >= previous.cached_input_tokens
+                                    && current.cache_write_input_tokens
+                                        >= previous.cache_write_input_tokens
+                                    && current.output_tokens >= previous.output_tokens
+                                    && current.reasoning_output_tokens
+                                        >= previous.reasoning_output_tokens
+                            }
+                            _ => true,
+                        };
+                        if latest && self.current.thread_id.as_deref() == Some(thread_id) {
                             self.current.token_usage = total.clone();
                         }
                         if total.as_ref().is_some_and(|usage| usage.validate().is_ok()) {
-                            let previous = self.last_usage.get(thread_id).and_then(parse_usage);
                             // Prefer the response's own usage. A known previous total is a safe fallback.
                             let request_usage = message
                                 .pointer("/params/tokenUsage/last")
@@ -265,7 +292,9 @@ impl Tracker {
                                 self.current.error = Some("Per-request token usage unavailable; response was not estimated".into());
                             }
                         }
-                        self.last_usage.insert(thread_id.to_owned(), usage.clone());
+                        if latest {
+                            self.last_usage.insert(thread_id.to_owned(), usage.clone());
+                        }
                         self.current.cost_revision += 1;
                     }
                 }
@@ -290,6 +319,54 @@ impl Tracker {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn delayed_replays_do_not_charge_twice_or_roll_back_the_usage_baseline() {
+        let mut tracker = Tracker::default();
+        tracker.request(1, &json!({"id":1,"method":"thread/resume"}));
+        tracker.response(
+            1,
+            &json!({"id":1,"result":{"model":"model-a","thread":{"id":"chat"}}}),
+        );
+        let event = |total, last| {
+            json!({
+                "method":"thread/tokenUsage/updated","params":{"threadId":"chat","turnId":"turn",
+                "tokenUsage":{"total":{"inputTokens":total,"cachedInputTokens":0,"outputTokens":0,"reasoningOutputTokens":0},
+                "last":{"inputTokens":last,"cachedInputTokens":0,"outputTokens":0,"reasoningOutputTokens":0}}}
+            })
+        };
+        let first = event(100, 100);
+        tracker.response(1, &first);
+        tracker.response(1, &event(300, 200));
+        tracker.response(2, &first);
+        assert_eq!(tracker.current.requests.len(), 2);
+        assert_eq!(tracker.current.cost_revision, 2);
+        // A previously unseen delayed response is still charged at its own usage.
+        tracker.response(2, &event(150, 50));
+        assert_eq!(
+            tracker.current.token_usage.as_ref().unwrap().input_tokens,
+            300
+        );
+        let mut next = event(400, 100);
+        next["params"]["tokenUsage"]
+            .as_object_mut()
+            .unwrap()
+            .remove("last");
+        tracker.response(1, &next);
+        assert_eq!(
+            tracker
+                .current
+                .requests
+                .iter()
+                .map(|request| request.usage.input_tokens)
+                .collect::<Vec<_>>(),
+            [100, 200, 50, 100]
+        );
+        assert_eq!(
+            tracker.current.token_usage.as_ref().unwrap().input_tokens,
+            400
+        );
+    }
 
     #[test]
     fn responses_capture_their_own_usage_and_model_without_repricing_history() {
