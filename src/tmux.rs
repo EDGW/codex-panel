@@ -97,7 +97,8 @@ impl Tmux {
             "pane-died",
             &format!(
                 "if-shell -F {} {}",
-                quote(&format!("#{{==:#{{pane_id}},{}}}", pane.trim())),
+                // pane_id follows the active pane; hook_pane identifies the pane that died.
+                quote(&format!("#{{==:#{{hook_pane}},{}}}", pane.trim())),
                 quote("kill-session -t panel")
             ),
         ])?;
@@ -270,6 +271,8 @@ mod tests {
                 // No attached client: detaching must leave the session running.
                 std::thread::sleep(Duration::from_millis(100));
                 assert!(tmux.session_exists().unwrap());
+                // The user may be viewing settings in the lower pane when Codex exits.
+                tmux.execute(&["select-pane", "-t", "panel:0.1"]).unwrap();
                 // Kill the supervising shell, bypassing its exit cleanup entirely.
                 let pid = tmux
                     .execute(&["display-message", "-p", "-t", CODEX_PANE, "#{pane_pid}"])
