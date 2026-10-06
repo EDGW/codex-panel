@@ -10,7 +10,33 @@
 
 ## 下载与使用
 
-推荐在 Linux 和 macOS 上通过 Homebrew 安装：
+### Linux 一键安装
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash
+```
+
+脚本自动识别 x86_64 或 ARM64，下载 GitHub 最新发布版本并验证 SHA-256，安装到当前用户目录，无需 sudo。Linux 发布包需要 glibc 2.39 或更新版本；tmux、lsof 和 Codex CLI 需单独安装。
+
+安装后自动添加 `~/.local/bin/codex-panel` 和 `~/.local/bin/codex-panel-remove` 命令，程序及默认配置位于 `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/installation/`。如果 `~/.local/bin` 不在 PATH 中，脚本会在 Bash、Zsh 和 POSIX shell 的启动配置中添加 PATH 设置。打开新终端即可使用；当前终端可执行安装完成时输出的 `export PATH=…` 命令。
+
+再次执行安装命令即可升级。指定版本安装：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash -s -- --version v0.1.2
+```
+
+卸载时运行：
+
+```sh
+codex-panel-remove
+```
+
+卸载会清理脚本安装的程序、默认配置和 PATH 设置，保留 `~/.codex-panel/` 及 Codex 配置。建议选择一种安装方式；脚本遇到其他方式安装的同名命令时会停止，避免覆盖。
+
+### Homebrew
+
+Linux 和 macOS 也支持通过 Homebrew 安装：
 
 ```sh
 brew install EDGW/tap/codex-panel

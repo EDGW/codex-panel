@@ -10,7 +10,33 @@ Supports Linux x86_64 and ARM64, and macOS Apple Silicon. Currently supports bil
 
 ## Download and Usage
 
-Homebrew is the recommended installation method for Linux and macOS:
+### Linux One-line Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash
+```
+
+The installer detects x86_64 or ARM64, downloads the latest GitHub release, verifies its SHA-256 checksum, and installs for the current user without sudo. Linux releases require glibc 2.39 or newer. Install tmux, lsof, and Codex CLI separately.
+
+The `codex-panel` and `codex-panel-remove` commands are placed in `~/.local/bin`; the executable and defaults are stored in `${XDG_DATA_HOME:-$HOME/.local/share}/codex-panel/installation/`. If needed, the installer adds `~/.local/bin` to PATH in Bash, Zsh, and POSIX shell startup files. Open a new terminal or run the printed `export PATH=…` command to use them in your current terminal.
+
+Run the same installation command again to upgrade. To select a specific release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/EDGW/codex-panel/main/install.sh | bash -s -- --version v0.1.2
+```
+
+Uninstall with:
+
+```sh
+codex-panel-remove
+```
+
+This removes the script installation and its PATH entries, while preserving `~/.codex-panel/` and Codex configuration. Choose one installation method; the script refuses to overwrite commands installed by another method.
+
+### Homebrew
+
+Linux and macOS also support Homebrew:
 
 ```sh
 brew install EDGW/tap/codex-panel

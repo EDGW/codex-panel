@@ -121,6 +121,11 @@ jobs:
           test "$("verify/$package/codex-panel" --panel-version)" = "codex-panel v$version"
           cmp "$package/destinations.toml" "verify/$package/destinations.toml"
 
+      - name: Verify script installation, upgrade and removal
+        env:
+          TARGET: ${{ matrix.target }}
+        run: python3 packaging/test-installer.py "target/$TARGET/release/codex-panel"
+
       - name: Install Debian packaging tools
         run: sudo apt-get install -y dpkg-dev
 
@@ -184,3 +189,11 @@ jobs:
             "dist/codex-panel_${version}_${ARCHITECTURE}.deb" \
             "dist/codex-panel_${version}_${ARCHITECTURE}.deb.sha256" \
             --clobber
+
+      - name: Upload Linux installer
+        if: matrix.architecture == 'amd64'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" install.sh --clobber
