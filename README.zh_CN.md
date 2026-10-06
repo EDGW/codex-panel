@@ -34,6 +34,8 @@ cp destinations.toml target/release/destinations.toml
 
 移动程序时，将 `destinations.toml` 一起放在可执行文件旁。启动参数直接传给 Codex。
 
+Codex 默认在运行 `codex-panel` 时的当前工作目录中打开。可在项目目录中运行可执行文件，或通过 `-C /path/to/project` / `--cd /path/to/project` 指定其他目录。
+
 程序读取 `CODEX_HOME`（默认 `~/.codex`）中的认证配置。API key 优先级为：`PREVX_API_KEY` → 当前 provider 的 `env_key` 环境变量 → `experimental_bearer_token` → `auth.json` 中的 `OPENAI_API_KEY`。仅使用 ChatGPT 登录时，需通过 `PREVX_API_KEY` 额外提供 Hub API key。
 
 面板中，`Session total` 是当前会话的总费用，`Since monitoring` 是首次成功查询后累计的新增费用，重启后重置；`Requests` 是账单平台返回的请求数，`Estimated` 表示按 token 单价估算。

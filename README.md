@@ -34,6 +34,8 @@ cp destinations.toml target/release/destinations.toml
 
 When moving the program, keep `destinations.toml` beside the executable. All startup arguments are passed directly to Codex.
 
+Codex opens in the working directory where you run `codex-panel`. Run the executable from your project directory, or use `-C /path/to/project` / `--cd /path/to/project` to select another directory.
+
 The program reads authentication configuration from `CODEX_HOME` (default: `~/.codex`). API keys are resolved in this order: `PREVX_API_KEY` → the environment variable specified by the current provider's `env_key` → `experimental_bearer_token` → `OPENAI_API_KEY` in `auth.json`. If you only use ChatGPT login, provide a Hub API key through `PREVX_API_KEY`.
 
 In the panel, `Session total` is the current session's total cost, and `Since monitoring` is the additional cost accumulated after the first successful query, which resets on restart. `Requests` is the request count returned by the billing platform, and `Estimated` indicates a cost estimate based on token pricing.
