@@ -1,5 +1,5 @@
 //! All tmux commands, terminal sizing and shell-command encoding live here.
-use crate::AppResult;
+use crate::{AppResult, subprocess};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::{Command, Output};
@@ -36,9 +36,20 @@ impl Tmux {
     }
 
     fn execute(&self, args: &[&str]) -> AppResult<Output> {
-        let output = self.command(args).output()?;
+        let operation = args.first().copied().unwrap_or("command");
+        let output = subprocess::output(
+            &mut self.command(args),
+            &format!("Could not run tmux `{operation}`"),
+        )?;
         if !output.status.success() {
-            return Err(format!("tmux: {}", String::from_utf8_lossy(&output.stderr).trim()).into());
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stderr = stderr.trim();
+            let detail = if stderr.is_empty() {
+                output.status.to_string()
+            } else {
+                format!("{}: {stderr}", output.status)
+            };
+            return Err(format!("tmux `{operation}` failed ({detail})").into());
         }
         Ok(output)
     }
@@ -146,12 +157,13 @@ impl Tmux {
     }
 
     pub fn attach(&self) -> AppResult<()> {
-        let status = self
-            .command(&["attach-session", "-t", SESSION])
-            .env_remove("TMUX")
-            .status()?;
+        let status = subprocess::status(
+            self.command(&["attach-session", "-t", SESSION])
+                .env_remove("TMUX"),
+            "Could not run tmux `attach-session`",
+        )?;
         if !status.success() {
-            return Err("tmux attach failed".into());
+            return Err(format!("tmux `attach-session` failed ({status})").into());
         }
         Ok(())
     }
@@ -161,11 +173,12 @@ impl Tmux {
     }
 
     pub fn session_exists(&self) -> AppResult<bool> {
-        Ok(self
-            .command(&["has-session", "-t", SESSION])
-            .output()?
-            .status
-            .success())
+        Ok(subprocess::output(
+            &mut self.command(&["has-session", "-t", SESSION]),
+            "Could not run tmux `has-session`",
+        )?
+        .status
+        .success())
     }
 }
 
