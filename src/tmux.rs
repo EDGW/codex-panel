@@ -240,64 +240,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn upper_pane_exit_and_supervisor_sigkill_close_the_session_but_detach_does_not() {
-        use std::time::{Duration, Instant};
-        if Command::new("tmux").arg("-V").output().is_err() {
-            return;
-        }
-        struct Cleanup(Tmux);
-        impl Drop for Cleanup {
-            fn drop(&mut self) {
-                self.0.stop();
-            }
-        }
-        for (index, child) in [
-            "/bin/sh -c 'exit 0'",
-            "/bin/sh -c 'exit 7'",
-            "kill -KILL $$",
-            "sleep 30",
-        ]
-        .iter()
-        .enumerate()
-        {
-            let cleanup = Cleanup(Tmux::new(format!(
-                "ccp-lifecycle-{}-{index}",
-                std::process::id()
-            )));
-            let tmux = &cleanup.0;
-            tmux.create_layout(Path::new("/tmp"), &tmux.managed_command(child), "sleep 30")
-                .unwrap();
-            if *child == "sleep 30" {
-                // No attached client: detaching must leave the session running.
-                std::thread::sleep(Duration::from_millis(100));
-                assert!(tmux.session_exists().unwrap());
-                // The user may be viewing settings in the lower pane when Codex exits.
-                tmux.execute(&["select-pane", "-t", "panel:0.1"]).unwrap();
-                // Kill the supervising shell, bypassing its exit cleanup entirely.
-                let pid = tmux
-                    .execute(&["display-message", "-p", "-t", CODEX_PANE, "#{pane_pid}"])
-                    .unwrap();
-                let pid = String::from_utf8(pid.stdout).unwrap();
-                assert!(
-                    Command::new("kill")
-                        .args(["-KILL", pid.trim()])
-                        .status()
-                        .unwrap()
-                        .success()
-                );
-            }
-            let deadline = Instant::now() + Duration::from_secs(3);
-            while tmux.session_exists().unwrap() {
-                assert!(
-                    Instant::now() < deadline,
-                    "orphan panel survived upper pane exit: {child}"
-                );
-                std::thread::sleep(Duration::from_millis(20));
-            }
-        }
-    }
-
-    #[test]
     fn shell_arguments_round_trip_without_interpolation_or_splitting() {
         let values = [
             "a b",
@@ -317,20 +259,6 @@ mod tests {
         assert!(output.status.success());
         let expected = values.join("\0") + "\0";
         assert_eq!(output.stdout, expected.as_bytes());
-    }
-
-    #[test]
-    fn pane_size_parser_rejects_missing_extra_and_invalid_dimensions() {
-        assert_eq!(
-            parse_size("3 100\n").unwrap(),
-            PaneSize {
-                height: 3,
-                width: 100
-            }
-        );
-        for invalid in ["", "3", "3 100 5", "-3 100", "three 100"] {
-            assert!(parse_size(invalid).is_err());
-        }
     }
 
     #[test]

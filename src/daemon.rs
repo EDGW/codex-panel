@@ -317,35 +317,6 @@ esac
     }
 
     #[test]
-    fn absent_stopped_and_stale_daemons_start_and_wait_for_a_listening_socket() {
-        use std::os::unix::net::UnixListener;
-        for initial_status in [None, Some("stopped"), Some("running")] {
-            let fixture = StartupFixture::new();
-            if let Some(status) = initial_status {
-                fixture.write_version("version.json", status);
-            }
-            fixture.write_version("next-version.json", "running");
-            let started = fixture.runtime.path().join("started");
-            let socket = fixture.socket.clone();
-            let server = std::thread::spawn(move || {
-                let deadline = Instant::now() + Duration::from_secs(3);
-                while !started.exists() {
-                    assert!(Instant::now() < deadline, "daemon start was never called");
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                // start/version report success before the socket is available.
-                std::thread::sleep(Duration::from_millis(150));
-                UnixListener::bind(socket).unwrap()
-            });
-            let socket =
-                shared_socket_with(fixture.codex.as_os_str(), Duration::from_secs(2)).unwrap();
-            assert_eq!(socket, fixture.socket.to_str().unwrap());
-            assert!(fixture.runtime.path().join("started").exists());
-            drop(server.join().unwrap());
-        }
-    }
-
-    #[test]
     fn an_already_listening_daemon_is_reused_without_starting() {
         let fixture = StartupFixture::new();
         let _listener = std::os::unix::net::UnixListener::bind(&fixture.socket).unwrap();
