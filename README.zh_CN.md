@@ -4,6 +4,8 @@
 
 ## 介绍
 
+![Overview](./overview.png)
+
 为 Codex CLI 增加费用面板：上方保留原生界面，下方显示当前会话的总费用、本次监视期间新增的费用和请求数。
 
 支持 Linux x86_64、ARM64 和 macOS Apple Silicon。支持基于 [Claude Code Hub](https://github.com/ding113/claude-code-hub) 的账单平台，以及使用 models.dev 聚合价格估算 token 费用的 provider。可通过固定值、JSON 或 XML 来源将账单金额换算成付款币种。

@@ -4,6 +4,8 @@ English | [简体中文](./README.zh_CN.md)
 
 ## Introduction
 
+![Overview](./overview.png)
+
 Adds a cost panel to Codex CLI: the native interface stays at the top, while the panel below shows the current session's total cost, the additional cost incurred during monitoring, and the request count.
 
 Supports Linux x86_64 and ARM64, and macOS Apple Silicon. Supports billing platforms based on [Claude Code Hub](https://github.com/ding113/claude-code-hub) and token-based cost estimates using models.dev. Billing amounts can be converted to a payment currency using a fixed value, a JSON source, or an XML source.
